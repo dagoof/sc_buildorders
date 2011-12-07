@@ -1,0 +1,156 @@
+<html>
+    <head>
+        <title>Build Orders</title>
+        <link rel="stylesheet"
+            href="http://twitter.github.com/bootstrap/1.4.0/bootstrap.min.css">
+        <script type='text/javascript' src='raphael-min.js'></script>
+        <script type='text/javascript' src='jquery-1.7.1.min.js'></script>
+        <script type='text/javascript'>
+            $(function() {
+                    build_order_graph = function(context) {
+                        var points = [], 
+                            init_radius = 8, max_radius = 10,
+                            node_fill = '#eee',
+                            node_stroke = '#333',
+                            line_stroke = '#bbb';
+
+                        var bglines = [
+                            context.path([['M', 0, 10], ['L', 0, 10]]),
+                            context.path([['M', 0, 30], ['L', 0, 30]]),
+                            context.path([['M', 0, 50], ['L', 0, 50]]),
+                            context.path([['M', 0, 70], ['L', 0, 70]])
+                        ]
+                        for (var line in bglines) {
+                            bglines[line].attr({stroke: line_stroke});
+                        }
+                        
+                        var styles = [
+                            {
+                                'stroke-width': 2,
+                                'stroke-dasharray': '-',
+                                'fill': node_fill,
+                                'stroke': node_stroke
+                            },
+                            {
+                                'stroke-width': 2,
+                                'fill': node_fill,
+                                'stroke': node_stroke
+                            },
+                            {
+                                'stroke-width': 2,
+                                'stroke-dasharray': '.',
+                                'fill': node_fill,
+                                'stroke': node_stroke
+                            },
+                            {
+                                'stroke-width': 2,
+                                'stroke-dasharray': '-.',
+                                'fill': node_fill,
+                                'stroke': node_stroke
+                            }
+                        ];
+
+                        var append_node = function(n) {
+                            var n_x = (points.length + 1) * 20,
+                                n_y = (20 * (n + 1)) - 10,
+                                n_x_padded = n_x + 20;
+                            point = context.circle(n_x, n_y, init_radius);
+                            point.attr(styles[n]);
+                            for (var line_i in bglines) {
+                                var line_path = bglines[line_i].attrs.path;
+                                line_path[line_path.length - 1][1] = n_x_padded;
+                                bglines[line_i].attr({path: line_path});
+                            }
+                            point.mouseover(function() {
+                                this.animate({r: max_radius}, 1000, 'elastic');
+                                //this.scale(6/5, 6/5);
+                            });
+                            point.mouseout(function() {
+                                this.animate({r: init_radius}, 1000, 'bounce');
+                                //this.scale(5/6, 5/6);
+                            });
+                            points.push(point);
+                            return point;
+                        }
+
+                        return {
+                            append_node: append_node
+                        }
+                    }
+
+                    var first = Raphael('build_order_first', 820, 80);
+                    var first_graph = build_order_graph(first);
+                    var first_points = [1, 0, 1, 2, 1, 0, 3, 3, 0, 1, 3, 1, 0];
+                    var second = Raphael('build_order_second', 820, 80);
+                    var second_graph = build_order_graph(second);
+                    var second_points = [1, 0, 1, 0, 1, 2, 1, 3, 0, 0, 0, 0, 3,
+                        0, 2, 1, 3, 0];
+                    for (var point in first_points) {
+                        node = first_graph.append_node(first_points[point]);
+                    }
+                    for (var point in second_points) {
+                        node = second_graph.append_node(second_points[point]);
+                    }
+            });
+        </script>
+        <style type='text/css'>
+            body {
+                padding-top: 60px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='hero-unit'>
+                <!--
+                <p>
+                    NesTea's most notable strength is his unparalleled decision making. Tastosis on several occasions compared NesTea's playstyle to that of sAviOr, as NesTea's playstyle generally revolves around heavy droning and making the correct/minimum number of units for defense at the right moment before controlling the map by taking expansions slowly. NesTea's great decision making also contributes to his high ZvZ win-rate, as the decision to build either Drones or other units from Larvae becomes more crucial in such a volatile match up.
+                </p>
+                -->
+                <div id='build_order_first'></div>
+                <h1>IMNestea</h1>
+            </div>
+
+            <div class='row'>
+                <div class='span-one-third'>
+                    <h2>
+                        A great match
+                    </h2>
+                </div>
+                <div class='span-one-third'>
+                    <h2>
+                        Antiga Shipyard
+                    </h2>
+                    <p>
+                        GSL Super Tournament, Ro8 <br>
+                        Nov 26, 2011
+                    </p>
+                </div>
+                <div class='span-one-third'>
+                    <p>
+                    <h3>IMNestea</h2> has <strong>56% winrate</strong> against terran
+                    and uses this build <strong>16%</strong> of the time in this
+                    matchup with a success rate of <strong>22%</strong>
+                    </p>
+                    <p>
+                    <h3>IMMVP</h2> has <strong>67% winrate</strong> against zerg
+                    and uses this build <strong>95%</strong> of the time in this
+                    matchup with a sucess rate of <strong>72%</strong>
+                </div>
+            </div>
+
+            <div class='hero-unit'>
+                <h1>IMMVP</h1>
+                <div id='build_order_second'></div>
+                <!--
+                <p>
+                    Mvp's most notable achievements include qualifying for the 2010 Korean Air OSL's Ro36 stage, as well as making the quarterfinals of the 2010 Hana Daetoo Securities MSL. To reach this stage Mvp beat A-teamers Jangbi, BeSt and BaBy twice. He ultimately was eliminated by Flash who he took a game off, losing 1-3.
+                </p>
+                <p>
+                    Mvp's KeSPA Ranking peaked at 39 after his MSL run, but he was unable to maintain his momentum and retired shortly thereafter.
+                </p>
+                -->
+            </div>
+        </div>
+    </body>
+</html>
