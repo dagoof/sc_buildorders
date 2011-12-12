@@ -1,19 +1,56 @@
-import functools
+import functools, operator, itertools
 
-def convert_to(conversion_target):
+def apply_f(applied_f):
     def decorator(f):
         @functools.wraps(f)
         def _wrapped(*args, **kwargs):
-            return conversion_target(f(*args, **kwargs))
+            return applied_f(f(*args, **kwargs))
         return _wrapped
     return decorator
 
+def reverse_args(f):
+    @functools.wraps(f)
+    def _wrapped(*args):
+        return f(*reversed(args))
+    return _wrapped
+
+all_gameunits = {}
+
+def register_gameunit(unit):
+    all_gameunits[str(unit)] = unit
+
+class GameResource(object):
+    @classmethod
+    def combine_resources(cls, *resources):
+        return cls(sum(r.amount for r in resources if isinstance(r, cls)))
+        #return cls(sum(map(operator.attrgetter('amount'),
+            #filter(functools.partial(
+                #reverse_args(isinstance), cls),
+                #resources))))
+
+    def __init__(self, amount):
+        self.amount = amount
+
+    def __repr__(self):
+        return '<{_class}: {amount}>'.format(amount = self.amount,
+                _class = self.__class__.__name__)
+
+class Mineral(GameResource):
+    pass
+
+class Gas(GameResource):
+    pass
+
+game_resources = [Mineral, Gas]
+
 class GameUnit(object):
-    def __init__(self, name, reqs = (), costs = ()):
+    def __init__(self, name, reqs = (), costs = (), consumes = ()):
         self.name = name
         self._reqs = reqs
         self._costs = costs
+        self._consumes = consumes
         self._deps = []
+        register_gameunit(self)
         for req in self._reqs:
             req.register_dependent(self)
 
@@ -22,11 +59,11 @@ class GameUnit(object):
             self._deps.append(other)
 
     @property
-    def immediate_requirements(self):
+    def requirements(self):
         return self._reqs
 
     @property
-    @convert_to(list)
+    @apply_f(list)
     def full_requirements(self):
         sofar = []
         for req in self._reqs:
@@ -39,12 +76,51 @@ class GameUnit(object):
                 yield req
 
     @property
-    def available_choices(self):
+    def costs(self):
+        return self._costs
+
+    @property
+    @apply_f(list)
+    def full_costs(self):
+        _costs = reduce(operator.add,
+                [req.costs for req in self.full_requirements])
+        _costs += self.costs
+        for resource in game_resources:
+            combined = resource.combine_resources(*_costs)
+            if combined.amount:
+                yield combined
+
+    @property
+    def consumes(self):
+        return self._consumes
+
+    @property
+    @apply_f(list)
+    def full_consumes(self):
+        _consumes = reduce(operator.add,
+                [req.consumes for req in self.full_requirements])
+        _consumes += self.consumes
+        for c in _consumes:
+            yield c
+
+    @property
+    def allows(self):
         return self._deps
+
+    @property
+    def data_obj(self):
+        return {
+            'unit_name': self.name,
+            'requires': self.full_requirements,
+            'allows': self.allows,
+        }
 
     def __repr__(self):
         return '<{_class}: {_name}>'.format(_name = self.name,
                 _class = self.__class__.__name__)
+
+    def __str__(self):
+        return self.name
 
 class UnitNames:
     hatchery = 'Hatchery'
@@ -103,33 +179,67 @@ class UnitNames:
 Zerg structures
 """
 
-hatchery = GameUnit(UnitNames.hatchery)
-spawning_pool = GameUnit(UnitNames.spawning_pool)
-baneling_nest = GameUnit(UnitNames.baneling_nest, [spawning_pool])
-roach_warren = GameUnit(UnitNames.roach_warren, [spawning_pool])
-lair = GameUnit(UnitNames.lair, [spawning_pool])
-infestation_pit = GameUnit(UnitNames.infestation_pit, [lair])
-spire = GameUnit(UnitNames.spire, [lair])
-hydralisk_den = GameUnit(UnitNames.hydralisk_den, [lair])
-hive = GameUnit(UnitNames.hive, [infestation_pit])
-ultralisk_den = GameUnit(UnitNames.ultralisk_den, [hive])
-greater_spire = GameUnit(UnitNames.greater_spire, [hive, spire])
+drone = GameUnit(UnitNames.drone,
+        costs = [Mineral(50)])
+hatchery = GameUnit(UnitNames.hatchery,
+        costs = [Mineral(300)],
+        consumes = [drone])
+spawning_pool = GameUnit(UnitNames.spawning_pool,
+        costs = [Mineral(200)],
+        consumes = [drone])
+baneling_nest = GameUnit(UnitNames.baneling_nest, [spawning_pool],
+        costs = [Mineral(100), Gas(50)],
+        consumes = [drone])
+roach_warren = GameUnit(UnitNames.roach_warren, [spawning_pool],
+        costs = [Mineral(150)],
+        consumes = [drone])
+lair = GameUnit(UnitNames.lair, [spawning_pool],
+        costs = [Mineral(150), Gas(100)],
+        consumes = [hatchery])
+infestation_pit = GameUnit(UnitNames.infestation_pit, [lair],
+        costs = [Mineral(100), Gas(100)],
+        consumes = [drone])
+spire = GameUnit(UnitNames.spire, [lair],
+        costs = [Mineral(200), Gas(200)],
+        consumes = [drone])
+hydralisk_den = GameUnit(UnitNames.hydralisk_den, [lair],
+        costs = [Mineral(100), Gas(100)],
+        consumes = [drone])
+hive = GameUnit(UnitNames.hive, [infestation_pit],
+        costs = [Mineral(200), Gas(150)],
+        consumes = [lair])
+ultralisk_den = GameUnit(UnitNames.ultralisk_den, [hive],
+        costs = [Mineral(150), Gas(200)],
+        consumes = [drone])
+greater_spire = GameUnit(UnitNames.greater_spire, [hive],
+        costs = [Mineral(100), Gas(150)],
+        consumes = [spire])
 
 
 """
 Zerg units
 """
 
-drone = GameUnit(UnitNames.drone, [hatchery])
-zergling = GameUnit(UnitNames.zergling, [spawning_pool])
-ultralisk = GameUnit(UnitNames.ultralisk, [ultralisk_den])
-hydralisk = GameUnit(UnitNames.hydralisk, [hydralisk_den])
-corrupter = GameUnit(UnitNames.corrupter, [spire])
-mutalisk = GameUnit(UnitNames.mutalisk, [spire])
-infestor = GameUnit(UnitNames.infestor, [infestation_pit])
-roach = GameUnit(UnitNames.roach, [roach_warren])
-baneling = GameUnit(UnitNames.baneling, [baneling_nest])
-brood_lord = GameUnit(UnitNames.brood_lord, [corrupter, greater_spire])
+zergling = GameUnit(UnitNames.zergling, [spawning_pool],
+        costs = [Mineral(25)])
+ultralisk = GameUnit(UnitNames.ultralisk, [ultralisk_den],
+        costs = [Mineral(300), Gas(200)])
+hydralisk = GameUnit(UnitNames.hydralisk, [hydralisk_den],
+        costs = [Mineral(100), Gas(50)])
+corrupter = GameUnit(UnitNames.corrupter, [spire],
+        costs = [Mineral(150), Gas(100)])
+mutalisk = GameUnit(UnitNames.mutalisk, [spire],
+        costs = [Mineral(100), Gas(100)])
+infestor = GameUnit(UnitNames.infestor, [infestation_pit],
+        costs = [Mineral(100), Gas(150)])
+roach = GameUnit(UnitNames.roach, [roach_warren],
+        costs = [Mineral(75), Gas(25)])
+baneling = GameUnit(UnitNames.baneling, [baneling_nest],
+        costs = [Mineral(25), Gas(25)],
+        consumes = [zergling])
+brood_lord = GameUnit(UnitNames.brood_lord, [greater_spire],
+        costs = [Mineral(150), Gas(150)],
+        consumes = [corrupter])
 
 
 """

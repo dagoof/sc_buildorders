@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block header %}
+{% raw %}
+<script type='text/javascript'>
+    var add_unit = function(unit_data) {
+        return $.ajax({
+            url: '/external_render',
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                template : [
+                    "<div class='row'>",
+                    "<div class='span4'>",
+                        "<h1>{{ unit_name }}</h1>",
+                    "</div>",
+                    "<div class='span6'>",
+                        "<h2>Requires</h2>",
+                        "<ul>",
+                        "{% for required in requires %}",
+                        "<li>",
+                            "<a href='{{ url_for('api_unit_options', unit = required) }}'>",
+                                "{{ required }}",
+                            "</a>",
+                        "</li>",
+                        "{% endfor %}",
+                        "</ul>",
+                    "</div>",
+                    "<div class='span6'>",
+                        "<h2>Allows</h2>",
+                        "<ul>",
+                        "{% for allowed in allows %}",
+                        "<li>",
+                            "<a href='{{ url_for('api_unit_options', unit = allowed) }}'>",
+                                "{{ allowed }}",
+                            "</a>",
+                        "</li>",
+                        "{% endfor %}",
+                        "</ul>",
+                    "</div>",
+                    "</div>"].join('\n'),
+                context: unit_data
+            }),
+            success: function(rendered) {
+                 $(rendered.template).insertAfter('.row:last');
+            }
+        });
+    }
+
+    $(function() {
+        $('a').live('click', function() {
+            $.get(this.href, function(data) {
+                add_unit(data);
+            });
+            return false;
+        });
+    });
+</script>
+{% endraw %}
+{% endblock %}
+
+{% block main %}
+        <div class='row'>
+            <div class='span4'>
+                <h1>{{ unit_name }}</h1>
+            </div>
+            <div class='span6'>
+                <h2>Requires</h2>
+                <ul>
+                {% for required in requires %}
+                <li>
+                    <a href='{{ url_for('api_unit_options', unit = required) }}'>
+                        {{ required }}
+                    </a>
+                </li>
+                {% endfor %}
+                </ul>
+            </div>
+            <div class='span6'>
+                <h2>Allows</h2>
+                <ul>
+                {% for allowed in allows %}
+                <li>
+                    <a href='{{ url_for('api_unit_options', unit = allowed) }}'>
+                        {{ allowed }}
+                    </a>
+                </li>
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
+{% endblock %}
+
