@@ -1,6 +1,7 @@
 import functools, collections, jinja2
 from flask import Flask, request, redirect, url_for, render_template, g,\
         session, abort, jsonify, flash
+from flaskext.sqlalchemy import SQLAlchemy
 from sc_units import all_gameunits
 
 def map_sub(f, _iter):
@@ -30,9 +31,40 @@ def obj_to_kwargs(f):
 
 api_func = apply_f(obj_to_kwargs(jsonify))
 
+SECRET_KEY = 'devkey'
 DEBUG = True
 app = Flask(__name__)
 app.config.from_object(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///build_orders.db'
+db = SQLAlchemy(app)
+
+class Build(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    
+    def __init__(self):
+        pass
+
+    def __repr__(self):
+        return '<Build %r>' % self.id
+
+class Element(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    build_id = db.Column(db.Integer, db.ForeignKey('build.id'),
+            nullable = False)
+    build = db.relationship(Build, backref = db.backref('elements'))
+    index = db.Column(db.Integer, nullable = False)
+    unit_name = db.Column(db.String, nullable = False)
+
+    def __init__(self, build, index, unit_name):
+        self.build = build
+        self.index = index
+        self.unit_name = unit_name
+        self.unit = all_gameunits[unit_name]
+
+    def __repr__(self):
+        return '<Element %r>' % self.unit
+
+
 
 @app.route('/external_render', methods = ['POST'])
 def external_render():

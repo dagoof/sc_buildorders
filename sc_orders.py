@@ -47,6 +47,6 @@ class BuildOrder(object):
             raise Exception('%r requirements not met' % unit)
         return self
 
-zerg_base = BuildOrder(*[sc_units.drone] * 6 + [sc_units.hatchery])
-#protoss_base = BuildOrder(sc_units.nexus, *([sc_units.probe] * 6))
+zerg_base = BuildOrder(*[sc_units.drone] * 7 + [sc_units.hatchery])
+protoss_base = BuildOrder(sc_units.nexus, *([sc_units.probe] * 6))
 
