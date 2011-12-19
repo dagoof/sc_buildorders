@@ -3,6 +3,7 @@ from flask import Flask, request, redirect, url_for, render_template, g,\
         session, abort, jsonify, flash
 from flaskext.sqlalchemy import SQLAlchemy
 from sc_units import all_gameunits
+from sc_orders import BuildOrder
 
 def map_sub(f, _iter):
     _part = functools.partial(map_sub, f)
@@ -44,6 +45,14 @@ class Build(db.Model):
     def __init__(self):
         pass
 
+    @property
+    def units(self):
+        return map(operator.methodgetter('unit'), self.elements)
+
+    @property
+    def order(self):
+        return BuildOrder(*self.units)
+
     def __repr__(self):
         return '<Build %r>' % self.id
 
@@ -59,7 +68,10 @@ class Element(db.Model):
         self.build = build
         self.index = index
         self.unit_name = unit_name
-        self.unit = all_gameunits[unit_name]
+
+    @property
+    def unit(self):
+        return all_gameunits[unit_name]
 
     def __repr__(self):
         return '<Element %r>' % self.unit
