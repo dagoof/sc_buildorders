@@ -1,9 +1,9 @@
-import functools, collections, jinja2
+import functools, collections, jinja2, operator
 from flask import Flask, request, redirect, url_for, render_template, g,\
         session, abort, jsonify, flash
 from flaskext.sqlalchemy import SQLAlchemy
 from sc_units import all_gameunits
-from sc_orders import BuildOrder
+from sc_orders import BuildOrder, ZERG, zerg_base
 
 def map_sub(f, _iter):
     _part = functools.partial(map_sub, f)
@@ -41,17 +41,22 @@ db = SQLAlchemy(app)
 
 class Build(db.Model):
     id = db.Column(db.Integer, primary_key = True)
-    
+
     def __init__(self):
         pass
 
     @property
     def units(self):
-        return map(operator.methodgetter('unit'), self.elements)
+        return map(operator.attrgetter('unit'), self.elements)
 
     @property
     def order(self):
-        return BuildOrder(*self.units)
+        return ZERG(*self.units)
+
+    @property
+    def next_index(self):
+        indexes = map(operator.attrgetter('index'), self.elements)
+        return indexes and max(indexes) + 1 or 0
 
     def __repr__(self):
         return '<Build %r>' % self.id
@@ -71,12 +76,16 @@ class Element(db.Model):
 
     @property
     def unit(self):
-        return all_gameunits[unit_name]
+        return all_gameunits[self.unit_name]
 
     def __repr__(self):
         return '<Element %r>' % self.unit
 
-
+def build_from_order(order):
+    build = Build()
+    for unit in order._unit_order:
+        Element(build, build.next_index, str(unit))
+    return build
 
 @app.route('/external_render', methods = ['POST'])
 def external_render():
@@ -100,6 +109,30 @@ def api_unit_options(*args, **kwargs):
 def unit_options(*args, **kwargs):
     return render_template('create.html',
             **_unit_options(*args, **kwargs))
+
+@app.route('/build/<int:build_id>')
+def build(build_id):
+    build = Build.query.filter_by(id = build_id).first()
+    return render_template('build.html', build = build)
+
+@app.route('/build/create')
+def build_create():
+    build = build_from_order(zerg_base)
+    db.session.add(build)
+    db.session.add_all(build.elements)
+    db.session.commit()
+    return redirect(url_for('build', build_id = build.id))
+
+@app.route('/build/add/<int:build_id>/<unit>')
+def build_add(build_id, unit):
+    build = Build.query.filter_by(id = build_id).first()
+    element = Element(build, build.next_index, unit)
+    db.session.add(element)
+    try:
+        db.session.commit()
+    except Exception, e:
+        db.session.rollback()
+    return redirect(url_for('build', build_id = build_id))
 
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', port = 8096)

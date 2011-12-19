@@ -194,16 +194,16 @@ hatchery = GameUnit(UnitNames.hatchery,
 extractor = GameUnit(UnitNames.extractor,
         costs = [Mineral(25)],
         consumes = [drone])
-spawning_pool = GameUnit(UnitNames.spawning_pool,
+spawning_pool = GameUnit(UnitNames.spawning_pool, [hatchery],
         costs = [Mineral(200)],
         consumes = [drone])
-evolution_chamber = GameUnit(UnitNames.evolution_chamber,
+evolution_chamber = GameUnit(UnitNames.evolution_chamber, [hatchery],
         costs = [Mineral(75)],
         consumes = [drone])
-spore_crawler = GameUnit(UnitNames.spore_crawler,
+spore_crawler = GameUnit(UnitNames.spore_crawler, [evolution_chamber],
         costs = [Mineral(75)],
         consumes = [drone])
-spine_crawler = GameUnit(UnitNames.spine_crawler,
+spine_crawler = GameUnit(UnitNames.spine_crawler, [spawning_pool],
         costs = [Mineral(100)],
         consumes = [drone])
 baneling_nest = GameUnit(UnitNames.baneling_nest, [spawning_pool],
@@ -299,6 +299,7 @@ robotics_facility = GameUnit(UnitNames.robotics_facility, [cybernetics_core],
 robotics_bay = GameUnit(UnitNames.robotics_bay, [robotics_facility],
         costs = [Mineral(200), Gas(200)])
 
+
 """
 Protoss units
 """
@@ -335,3 +336,17 @@ observer = GameUnit(UnitNames.observer, [robotics_facility],
         costs = [Mineral(25), Gas(75)])
 warp_prism = GameUnit(UnitNames.warp_prism, [robotics_facility],
         costs = [Mineral(200)])
+
+
+zerg_units = [ drone, hatchery, extractor, spawning_pool, evolution_chamber,
+        spore_crawler, spine_crawler, baneling_nest, roach_warren, lair,
+        nydus_network, infestation_pit, spire, hydralisk_den, hive,
+        ultralisk_den, greater_spire, zergling, queen, ultralisk, nydus_worm,
+        hydralisk, corrupter, mutalisk, infestor, roach, baneling, brood_lord ]
+protoss_units = [ nexus, pylon, assimilator, gateway, cybernetics_core,
+        forge, twilight_council, templar_archives, dark_shrine, stargate,
+        fleet_beacon, robotics_facility, robotics_bay, probe, zealot,
+        sentry, stalker, photon_cannon, dark_templar, high_templar, archon,
+        phoenix, void_ray, carrier, mothership, immortal, colossus,
+        observer, warp_prism ]
+

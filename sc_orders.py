@@ -6,10 +6,10 @@ class BuildElement(object):
 
 
 class BuildOrder(object):
-    def __init__(self, *units):
+    def __init__(self, race_units, *units):
+        self._race_units = race_units
         self._unit_order = []
         self._units = []
-        self._tech = []
         for unit in units:
             self.add_unit(unit)
 
@@ -23,7 +23,7 @@ class BuildOrder(object):
 
     @property
     def available_tech(self):
-        return self._tech
+        return filter(self.unit_valid, self._race_units)
 
     def unit_valid(self, unit):
         for c in unit.consumes:
@@ -38,15 +38,15 @@ class BuildOrder(object):
         if self.unit_valid(unit):
             self._unit_order.append(unit)
             self._units.append(unit)
-            for tech in unit.allows:
-                if tech not in self.available_tech:
-                    self._tech.append(tech)
             for consume in unit.consumes:
                 self._units.remove(consume)
         else:
             raise Exception('%r requirements not met' % unit)
         return self
 
-zerg_base = BuildOrder(*[sc_units.drone] * 7 + [sc_units.hatchery])
-protoss_base = BuildOrder(sc_units.nexus, *([sc_units.probe] * 6))
+ZERG = functools.partial(BuildOrder, sc_units.zerg_units)
+PROTOSS = functools.partial(BuildOrder, sc_units.protoss_units)
+
+zerg_base = ZERG(*[sc_units.drone] * 7 + [sc_units.hatchery])
+protoss_base = PROTOSS(sc_units.nexus, *([sc_units.probe] * 6))
 

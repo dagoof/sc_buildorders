@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+
+{% block main %}
+    <div class='row'>
+        <a href='{{ url_for('build_create') }}'>create new</a>
+    </div>
+    </div>
+    <div class='row'>
+        <div class='span8'>
+            <ul>
+                {% for active in build.order.active_units %}
+                <li>
+                    {{ active }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class='span8'>
+            <ul>
+                {% for available in build.order.available_tech %}
+                <li>
+                    <a href='{{ url_for('build_add', build_id = build.id, unit = available) }}'>{{ available }}</a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endblock %}
