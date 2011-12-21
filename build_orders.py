@@ -1,9 +1,9 @@
-import functools, collections, jinja2, operator
+import functools, collections, jinja2, operator, decorators
 from flask import Flask, request, redirect, url_for, render_template, g,\
         session, abort, jsonify, flash
 from flaskext.sqlalchemy import SQLAlchemy
 from sc_units import all_gameunits
-from sc_orders import BuildOrder, ZERG, zerg_base
+from sc_orders import race_orders, race_builds
 
 def map_sub(f, _iter):
     _part = functools.partial(map_sub, f)
@@ -16,21 +16,7 @@ def map_sub(f, _iter):
     else:
         return f(_iter)
 
-def apply_f(applied_f):
-    def decorator(f):
-        @functools.wraps(f)
-        def _wrapped(*args, **kwargs):
-            return applied_f(f(*args, **kwargs))
-        return _wrapped
-    return decorator
-
-def obj_to_kwargs(f):
-    @functools.wraps(f)
-    def _wrapped(obj):
-        return f(**obj)
-    return _wrapped
-
-api_func = apply_f(obj_to_kwargs(jsonify))
+api_func = decorators.apply_f(decorators.obj_to_kwargs(jsonify))
 
 SECRET_KEY = 'devkey'
 DEBUG = True
@@ -41,9 +27,10 @@ db = SQLAlchemy(app)
 
 class Build(db.Model):
     id = db.Column(db.Integer, primary_key = True)
+    race = db.Column(db.String, nullable = False)
 
-    def __init__(self):
-        pass
+    def __init__(self, race):
+        self.race = race
 
     @property
     def units(self):
@@ -51,7 +38,7 @@ class Build(db.Model):
 
     @property
     def order(self):
-        return ZERG(*self.units)
+        return race_orders[self.race](*self.units)
 
     @property
     def next_index(self):
@@ -59,7 +46,7 @@ class Build(db.Model):
         return indexes and max(indexes) + 1 or 0
 
     def __repr__(self):
-        return '<Build %r>' % self.id
+        return '<%s Build %r>' % (self.race, self.id)
 
 class Element(db.Model):
     id = db.Column(db.Integer, primary_key = True)
@@ -81,8 +68,8 @@ class Element(db.Model):
     def __repr__(self):
         return '<Element %r>' % self.unit
 
-def build_from_order(order):
-    build = Build()
+def build_from_order(race, order):
+    build = Build(race)
     for unit in order._unit_order:
         Element(build, build.next_index, str(unit))
     return build
@@ -115,9 +102,9 @@ def build(build_id):
     build = Build.query.filter_by(id = build_id).first()
     return render_template('build.html', build = build)
 
-@app.route('/build/create')
-def build_create():
-    build = build_from_order(zerg_base)
+@app.route('/build/create/<race>')
+def build_create(race):
+    build = build_from_order(race, race_builds[race])
     db.session.add(build)
     db.session.add_all(build.elements)
     db.session.commit()

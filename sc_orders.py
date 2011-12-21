@@ -1,9 +1,9 @@
-import functools, sc_units
+import functools, sc_units, operator, itertools
+import decorators
 
 class BuildElement(object):
     def __init__(self, unit):
         pass
-
 
 class BuildOrder(object):
     def __init__(self, race_units, *units):
@@ -15,11 +15,17 @@ class BuildOrder(object):
 
     @classmethod
     def based_on(cls, base):
-        return cls(*base.active_units)
+        return cls(base._race_units, *base._unit_order)
 
     @property
     def active_units(self):
         return self._units
+
+    @property
+    @decorators.apply_f(list)
+    def available_units(self):
+        return itertools.chain.from_iterable(
+                unit.acts_as for unit in self.active_units)
 
     @property
     def available_tech(self):
@@ -30,7 +36,7 @@ class BuildOrder(object):
             if c not in self.active_units:
                 return False
         for r in unit.requirements:
-            if r not in self.active_units:
+            if r not in self.available_units:
                 return False
         return True
 
@@ -46,7 +52,21 @@ class BuildOrder(object):
 
 ZERG = functools.partial(BuildOrder, sc_units.zerg_units)
 PROTOSS = functools.partial(BuildOrder, sc_units.protoss_units)
+TERRAN = functools.partial(BuildOrder, sc_units.terran_units)
 
 zerg_base = ZERG(*[sc_units.drone] * 7 + [sc_units.hatchery])
 protoss_base = PROTOSS(sc_units.nexus, *([sc_units.probe] * 6))
+terran_base = TERRAN(sc_units.command_center, *([sc_units.scv] * 7))
 
+race_orders = {
+    sc_units.Races.ZERG: ZERG,
+    sc_units.Races.TERRAN: TERRAN,
+    sc_units.Races.PROTOSS: PROTOSS,
+}
+
+race_builds = {
+    sc_units.Races.ZERG: zerg_base,
+    sc_units.Races.TERRAN: terran_base,
+    sc_units.Races.PROTOSS: protoss_base,
+}
+    

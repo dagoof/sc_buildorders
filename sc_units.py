@@ -1,18 +1,5 @@
 import functools, operator, itertools
-
-def apply_f(applied_f):
-    def decorator(f):
-        @functools.wraps(f)
-        def _wrapped(*args, **kwargs):
-            return applied_f(f(*args, **kwargs))
-        return _wrapped
-    return decorator
-
-def reverse_args(f):
-    @functools.wraps(f)
-    def _wrapped(*args):
-        return f(*reversed(args))
-    return _wrapped
+import decorators
 
 all_gameunits = {}
 
@@ -25,7 +12,7 @@ class GameResource(object):
         return cls(sum(r.amount for r in resources if isinstance(r, cls)))
         #return cls(sum(map(operator.attrgetter('amount'),
             #filter(functools.partial(
-                #reverse_args(isinstance), cls),
+                #decorators.reverse_args(isinstance), cls),
                 #resources))))
 
     def __init__(self, amount):
@@ -44,11 +31,13 @@ class Gas(GameResource):
 game_resources = [Mineral, Gas]
 
 class GameUnit(object):
-    def __init__(self, name, reqs = (), costs = (), consumes = ()):
+    def __init__(self, name, reqs = (), costs = (),
+            consumes = (), acts_as = ()):
         self.name = name
         self._reqs = reqs
         self._costs = costs
         self._consumes = consumes
+        self._acts_as = acts_as
         self._deps = []
         register_gameunit(self)
         for req in self._reqs:
@@ -63,7 +52,7 @@ class GameUnit(object):
         return self._reqs
 
     @property
-    @apply_f(list)
+    @decorators.apply_f(list)
     def full_requirements(self):
         sofar = []
         for req in self._reqs:
@@ -80,7 +69,7 @@ class GameUnit(object):
         return self._costs
 
     @property
-    @apply_f(list)
+    @decorators.apply_f(list)
     def full_costs(self):
         _costs = reduce(operator.add,
                 [req.costs for req in self.full_requirements])
@@ -95,7 +84,7 @@ class GameUnit(object):
         return self._consumes
 
     @property
-    @apply_f(list)
+    @decorators.apply_f(list)
     def full_consumes(self):
         _consumes = reduce(operator.add,
                 [req.consumes for req in self.full_requirements])
@@ -106,6 +95,17 @@ class GameUnit(object):
     @property
     def allows(self):
         return self._deps
+
+    @property
+    @decorators.apply_f(list)
+    def acts_as(self):
+        sofar = [self]
+        yield self
+        for unit in self._acts_as:
+            for more in unit.acts_as:
+                if more not in sofar:
+                    sofar.append(more)
+                    yield more
 
     @property
     def data_obj(self):
@@ -125,6 +125,7 @@ class GameUnit(object):
 class UnitNames:
     hatchery = 'Hatchery'
     drone = 'Drone'
+    overlord = 'Overlord'
     extractor = 'Extractor'
     spawning_pool = 'Spawning Pool'
     evolution_chamber = 'Evolution Chamber'
@@ -137,6 +138,7 @@ class UnitNames:
     roach_warren = 'Roach Warren'
     roach = 'Roach'
     lair = 'Lair'
+    overseer = 'Overseer'
     nydus_network = 'Nydus Network'
     nydus_worm = 'Nydus Worm'
     infestation_pit = 'Infestation Pit'
@@ -182,6 +184,38 @@ class UnitNames:
     mothership = 'Mothership'
     carrier = 'Carrier'
 
+    command_center = 'Command Center'
+    scv = 'SCV'
+    supply_depot = 'Supply Depot'
+    refinery = 'Refinery'
+    barracks = 'Barracks'
+    tech_lab = 'Tech Lab'
+    reactor = 'Reactor'
+    engineering_bay = 'Engineering Bay'
+    missile_turret = 'Missile Turret'
+    marine = 'Marine'
+    marauder = 'Marauder'
+    reaper = 'Reaper'
+    planetary_fortress = 'Planetary Fortress'
+    sentry_tower = 'Sentry Tower'
+    bunker = 'Bunker'
+    factory = 'Factory'
+    hellion = 'Hellion'
+    siege_tank = 'Siege Tank'
+    armory = 'Armory'
+    thor = 'Thor'
+    orbital_command = 'Orbital Command'
+    ghost_academy = 'Ghost Academy'
+    ghost = 'Ghost'
+    starport = 'Starport'
+    viking = 'Viking'
+    medivac = 'Medivac'
+    banshee = 'Banshee'
+    raven = 'Raven'
+    fusion_core = 'Fusion Core'
+    battlecruiser = 'Battlecruiser'
+
+
 """
 Zerg structures
 """
@@ -214,7 +248,8 @@ roach_warren = GameUnit(UnitNames.roach_warren, [spawning_pool],
         consumes = [drone])
 lair = GameUnit(UnitNames.lair, [spawning_pool],
         costs = [Mineral(150), Gas(100)],
-        consumes = [hatchery])
+        consumes = [hatchery],
+        acts_as = [hatchery])
 nydus_network = GameUnit(UnitNames.nydus_network, [lair],
         costs = [Mineral(150), Gas(200)],
         consumes = [drone])
@@ -229,21 +264,29 @@ hydralisk_den = GameUnit(UnitNames.hydralisk_den, [lair],
         consumes = [drone])
 hive = GameUnit(UnitNames.hive, [infestation_pit],
         costs = [Mineral(200), Gas(150)],
-        consumes = [lair])
+        consumes = [lair],
+        acts_as = [lair])
 ultralisk_den = GameUnit(UnitNames.ultralisk_den, [hive],
         costs = [Mineral(150), Gas(200)],
         consumes = [drone])
 greater_spire = GameUnit(UnitNames.greater_spire, [hive],
         costs = [Mineral(100), Gas(150)],
-        consumes = [spire])
+        consumes = [spire],
+        acts_as = [spire])
 
 
 """
 Zerg units
 """
 
+overlord = GameUnit(UnitNames.overlord,
+        costs = [Mineral(100)])
 zergling = GameUnit(UnitNames.zergling, [spawning_pool],
         costs = [Mineral(25)])
+overseer = GameUnit(UnitNames.overseer, [lair],
+        costs = [Mineral(50), Gas(50)],
+        consumes = [overlord],
+        acts_as = [overlord])
 queen = GameUnit(UnitNames.queen, [spawning_pool],
         costs = [Mineral(150)])
 ultralisk = GameUnit(UnitNames.ultralisk, [ultralisk_den],
@@ -338,15 +381,103 @@ warp_prism = GameUnit(UnitNames.warp_prism, [robotics_facility],
         costs = [Mineral(200)])
 
 
-zerg_units = [ drone, hatchery, extractor, spawning_pool, evolution_chamber,
-        spore_crawler, spine_crawler, baneling_nest, roach_warren, lair,
-        nydus_network, infestation_pit, spire, hydralisk_den, hive,
-        ultralisk_den, greater_spire, zergling, queen, ultralisk, nydus_worm,
-        hydralisk, corrupter, mutalisk, infestor, roach, baneling, brood_lord ]
+"""
+Terran Structures
+"""
+
+command_center = GameUnit(UnitNames.command_center,
+        costs = [Mineral(400)])
+supply_depot = GameUnit(UnitNames.supply_depot,
+        costs = [Mineral(100)])
+refinery = GameUnit(UnitNames.refinery,
+        costs = [Mineral(75)])
+barracks = GameUnit(UnitNames.barracks, [supply_depot],
+        costs = [Mineral(150)])
+tech_lab = GameUnit(UnitNames.tech_lab, [barracks],
+        costs = [Mineral(50), Gas(25)])
+reactor = GameUnit(UnitNames.reactor, [barracks],
+        costs = [Mineral(50), Gas(50)])
+engineering_bay = GameUnit(UnitNames.engineering_bay, [command_center],
+        costs = [Mineral(125)])
+missile_turret = GameUnit(UnitNames.missile_turret, [engineering_bay],
+        costs = [Mineral(100)])
+planetary_fortress = GameUnit(UnitNames.planetary_fortress, [engineering_bay],
+        costs = [Mineral(150), Gas(150)],
+        consumes = [command_center],
+        acts_as = [command_center])
+sentry_tower = GameUnit(UnitNames.sentry_tower, [engineering_bay],
+        costs = [Mineral(125), Gas(100)])
+bunker = GameUnit(UnitNames.bunker, [barracks],
+        costs = [Mineral(150)])
+factory = GameUnit(UnitNames.factory, [barracks],
+        costs = [Mineral(150), Gas(100)])
+armory = GameUnit(UnitNames.armory, [factory],
+        costs = [Mineral(150), Gas(100)])
+orbital_command = GameUnit(UnitNames.orbital_command, [barracks],
+        costs = [Mineral(150)],
+        consumes = [command_center],
+        acts_as = [command_center])
+ghost_academy = GameUnit(UnitNames.ghost_academy, [barracks],
+        costs = [Mineral(150), Gas(50)])
+starport = GameUnit(UnitNames.starport, [factory],
+        costs = [Mineral(150), Gas(100)])
+fusion_core = GameUnit(UnitNames.fusion_core, [starport],
+        costs = [Mineral(150), Gas(100)])
+
+
+"""
+Terran Units
+"""
+
+scv = GameUnit(UnitNames.scv,
+        costs = [Mineral(50)])
+marine = GameUnit(UnitNames.marine, [barracks],
+        costs = [Mineral(50)])
+marauder = GameUnit(UnitNames.marauder, [barracks, tech_lab],
+        costs = [Mineral(100), Gas(25)])
+reaper = GameUnit(UnitNames.reaper, [barracks, tech_lab],
+        costs = [Mineral(50), Gas(50)])
+hellion = GameUnit(UnitNames.hellion, [factory],
+        costs = [Mineral(100)])
+siege_tank = GameUnit(UnitNames.siege_tank, [factory, tech_lab],
+        costs = [Mineral(150), Gas(125)])
+thor = GameUnit(UnitNames.thor, [factory, tech_lab, armory],
+        costs = [Mineral(300), Gas(200)])
+ghost = GameUnit(UnitNames.ghost, [barracks, tech_lab, ghost_academy],
+        costs = [Mineral(200), Gas(100)])
+viking = GameUnit(UnitNames.viking, [starport],
+        costs = [Mineral(150), Gas(75)])
+medivac = GameUnit(UnitNames.medivac, [starport],
+        costs = [Mineral(100), Gas(100)])
+banshee = GameUnit(UnitNames.banshee, [starport, tech_lab],
+        costs = [Mineral(150), Gas(100)])
+raven = GameUnit(UnitNames.raven, [starport, tech_lab],
+        costs = [Mineral(100), Gas(200)])
+battlecruiser = GameUnit(UnitNames.battlecruiser,
+        [starport, tech_lab, fusion_core],
+        costs = [Mineral(300), Gas(200)])
+
+
+zerg_units = [ drone, overlord, hatchery, extractor, spawning_pool,
+        evolution_chamber, spore_crawler, spine_crawler, baneling_nest,
+        roach_warren, lair, overseer, nydus_network, infestation_pit,
+        spire, hydralisk_den, hive, ultralisk_den, greater_spire,
+        zergling, queen, ultralisk, nydus_worm, hydralisk, corrupter,
+        mutalisk, infestor, roach, baneling, brood_lord ]
 protoss_units = [ nexus, pylon, assimilator, gateway, cybernetics_core,
         forge, twilight_council, templar_archives, dark_shrine, stargate,
         fleet_beacon, robotics_facility, robotics_bay, probe, zealot,
         sentry, stalker, photon_cannon, dark_templar, high_templar, archon,
         phoenix, void_ray, carrier, mothership, immortal, colossus,
         observer, warp_prism ]
+terran_units = [ command_center, scv, supply_depot, refinery, barracks,
+        tech_lab, reactor, engineering_bay, missile_turret, marine,
+        marauder, reaper, planetary_fortress, sentry_tower, bunker, factory,
+        hellion, siege_tank, armory, thor, orbital_command, ghost_academy,
+        ghost, starport, viking, medivac, banshee, raven, fusion_core,
+        battlecruiser ]
 
+class Races:
+    ZERG = 'zerg'
+    TERRAN = 'terran'
+    PROTOSS = 'protoss'
