@@ -47,6 +47,15 @@ class GameUnit(object):
         if other not in self._deps:
             self._deps.append(other)
 
+    def valid_with_respect_to(self, active, available):
+        for c in self.consumes:
+            if c not in active:
+                return False
+        for r in unit.requirements:
+            if r not in available:
+                return False
+        return True
+
     @property
     def requirements(self):
         return self._reqs
@@ -121,6 +130,20 @@ class GameUnit(object):
 
     def __str__(self):
         return self.name
+
+
+class CompoundUnit(object):
+    def __init__(self, name, reqs = (), costs = (),
+            consumes = (), acts_as = (), yields = ()):
+        self.name = name
+        self._reqs = reqs
+        self._costs = costs
+        self._consumes = consumes
+        self._acts_as = acts_as
+        self._yields = yields
+
+class UnitWrapper(object):
+    pass
 
 class UnitNames:
     hatchery = 'Hatchery'
@@ -423,6 +446,24 @@ starport = GameUnit(UnitNames.starport, [factory],
         costs = [Mineral(150), Gas(100)])
 fusion_core = GameUnit(UnitNames.fusion_core, [starport],
         costs = [Mineral(150), Gas(100)])
+tech_lab_barracks = CompoundUnit(UnitNames.tech_lab_barracks,
+        consumes = [tech_lab, barracks],
+        yields = [tech_lab, barracks])
+reactor_barracks = CompoundUnit(UnitNames.reactor_barracks,
+        consumes = [reactor, barracks],
+        yields = [reactor, barracks])
+tech_lab_factory = CompoundUnit(UnitNames.tech_lab_factory,
+        consumes = [tech_lab, factory],
+        yields = [tech_lab, factory])
+reactor_factory = CompoundUnit(UnitNames.reactor_factory,
+        consumes = [reactor, factory],
+        yields = [reactor, factory])
+tech_lab_starport = CompoundUnit(UnitNames.tech_lab_starport,
+        consumes = [tech_lab, starport],
+        yields = [tech_lab, starport])
+reactor_starport = CompoundUnit(UnitNames.reactor_starport,
+        consumes = [reactor, starport],
+        yields = [reactor, starport])
 
 
 """

@@ -29,7 +29,9 @@ class BuildOrder(object):
 
     @property
     def available_tech(self):
-        return filter(self.unit_valid, self._race_units)
+        return filter(operator.methodcaller('valid_with_respect_to',
+            self.active_units,
+            self.available_units), self._race_units)
 
     def unit_valid(self, unit):
         for c in unit.consumes:
@@ -41,7 +43,8 @@ class BuildOrder(object):
         return True
 
     def add_unit(self, unit):
-        if self.unit_valid(unit):
+        if unit.valid_with_respect_to(self.active_units,
+                self.available_units):
             self._unit_order.append(unit)
             self._units.append(unit)
             for consume in unit.consumes:
