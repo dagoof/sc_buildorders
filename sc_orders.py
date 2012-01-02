@@ -33,22 +33,14 @@ class BuildOrder(object):
             self.active_units,
             self.available_units), self._race_units)
 
-    def unit_valid(self, unit):
-        for c in unit.consumes:
-            if c not in self.active_units:
-                return False
-        for r in unit.requirements:
-            if r not in self.available_units:
-                return False
-        return True
-
     def add_unit(self, unit):
         if unit.valid_with_respect_to(self.active_units,
                 self.available_units):
-            self._unit_order.append(unit)
-            self._units.append(unit)
-            for consume in unit.consumes:
-                self._units.remove(consume)
+            for more in sc_units.unit_wrapper(unit):
+                self._unit_order.append(more)
+                self._units.append(more)
+            for more in unit.consumes_with_respect_to(self.active_units):
+                self._units.remove(more)
         else:
             raise Exception('%r requirements not met' % unit)
         return self

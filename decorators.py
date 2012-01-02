@@ -1,4 +1,4 @@
-import functools
+import functools, collections
 
 def apply_f(applied_f):
     def decorator(f):
@@ -19,4 +19,7 @@ def obj_to_kwargs(f):
     def _wrapped(obj):
         return f(**obj)
     return _wrapped
+
+def is_iterable(o):
+    return isinstance(o, collections.Sequence) and not isinstance(o, basestring)
 
