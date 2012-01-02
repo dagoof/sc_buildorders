@@ -32,12 +32,13 @@ game_resources = [Mineral, Gas]
 
 class GameUnit(object):
     def __init__(self, name, reqs = (), costs = (),
-            consumes = (), acts_as = ()):
+            consumes = (), acts_as = (), yields = ()):
         self.name = name
         self._reqs = reqs
         self._costs = costs
         self._consumes = consumes
         self._acts_as = acts_as
+        self._yields = yields
         self._deps = []
         register_gameunit(self)
         for req in self._reqs:
@@ -46,6 +47,16 @@ class GameUnit(object):
     def register_dependent(self, other):
         if other not in self._deps:
             self._deps.append(other)
+
+    def valid_with_respect_to(self, active, available):
+        try:
+            self.consumes_with_respect_to(active)
+        except Exception, e:
+            return False
+        for req in self.requirements:
+            if req not in available:
+                return False
+        return True
 
     @property
     def requirements(self):
@@ -83,6 +94,30 @@ class GameUnit(object):
     def consumes(self):
         return self._consumes
 
+    def consumes_with_respect_to(self, active):
+        def can_remove_each(_remove_from, removed):
+            remove_from = _remove_from[:]
+            for elem in removed:
+                if elem in remove_from:
+                    remove_from.remove(elem)
+                else:
+                    return False
+            return True
+        if any(map(decorators.is_iterable, self.consumes)):
+            for sub in self.consumes:
+                if not decorators.is_iterable(sub):
+                    sub = [sub]
+                if can_remove_each(active, sub):
+                    return sub
+        else:
+            if can_remove_each(active, self.consumes):
+                return self.consumes
+        raise Exception('%s attempted tricky consume' % self)
+
+    @property
+    def yields(self):
+        return self._yields
+
     @property
     @decorators.apply_f(list)
     def full_consumes(self):
@@ -97,15 +132,13 @@ class GameUnit(object):
         return self._deps
 
     @property
-    @decorators.apply_f(list)
     def acts_as(self):
         sofar = [self]
-        yield self
         for unit in self._acts_as:
             for more in unit.acts_as:
                 if more not in sofar:
                     sofar.append(more)
-                    yield more
+        return sofar
 
     @property
     def data_obj(self):
@@ -122,7 +155,16 @@ class GameUnit(object):
     def __str__(self):
         return self.name
 
+@decorators.apply_f(list)
+def unit_wrapper(unit):
+    if unit.yields:
+        for more in unit.yields:
+            yield more
+    else:
+        yield unit
+
 class UnitNames:
+    innate = 'Innate'
     hatchery = 'Hatchery'
     drone = 'Drone'
     overlord = 'Overlord'
@@ -214,7 +256,21 @@ class UnitNames:
     raven = 'Raven'
     fusion_core = 'Fusion Core'
     battlecruiser = 'Battlecruiser'
+    tech_lab_barracks = 'Tech Labbed Barracks'
+    tech_lab_factory = 'Tech Labbed Factory'
+    tech_lab_starport = 'Tech Labbed Starport'
+    reactor_barracks = 'Reactored Barracks'
+    reactor_factory = 'Reactored Factory'
+    reactor_starport = 'Reactored Starport'
+    detach_tech_lab_barracks = 'Detach Tech Labbed Barracks'
+    detach_tech_lab_factory = 'Detach Tech Labbed Factory'
+    detach_tech_lab_starport = 'Detach Tech Labbed Starport'
+    detach_reactor_barracks = 'Detach Reactored Barracks'
+    detach_reactor_factory = 'Detach Reactored Factory'
+    detach_reactor_starport = 'Detach Reactored Starport'
 
+
+innate = GameUnit(UnitNames.innate)
 
 """
 Zerg structures
@@ -362,7 +418,10 @@ dark_templar = GameUnit(UnitNames.dark_templar, [dark_shrine],
 high_templar = GameUnit(UnitNames.high_templar, [templar_archives],
         costs = [Mineral(50), Gas(150)])
 archon = GameUnit(UnitNames.archon,
-        consumes = [high_templar, high_templar])
+        consumes = [
+            [high_templar, high_templar],
+            [high_templar, dark_templar],
+            [dark_templar, dark_templar]])
 phoenix = GameUnit(UnitNames.phoenix, [stargate],
         costs = [Mineral(150), Gas(100)])
 void_ray = GameUnit(UnitNames.void_ray, [stargate],
@@ -393,9 +452,9 @@ refinery = GameUnit(UnitNames.refinery,
         costs = [Mineral(75)])
 barracks = GameUnit(UnitNames.barracks, [supply_depot],
         costs = [Mineral(150)])
-tech_lab = GameUnit(UnitNames.tech_lab, [barracks],
+tech_lab = GameUnit(UnitNames.tech_lab, [innate],
         costs = [Mineral(50), Gas(25)])
-reactor = GameUnit(UnitNames.reactor, [barracks],
+reactor = GameUnit(UnitNames.reactor, [innate],
         costs = [Mineral(50), Gas(50)])
 engineering_bay = GameUnit(UnitNames.engineering_bay, [command_center],
         costs = [Mineral(125)])
@@ -424,6 +483,44 @@ starport = GameUnit(UnitNames.starport, [factory],
 fusion_core = GameUnit(UnitNames.fusion_core, [starport],
         costs = [Mineral(150), Gas(100)])
 
+tech_lab_barracks = GameUnit(UnitNames.tech_lab_barracks,
+        consumes = [[tech_lab, barracks], barracks],
+        acts_as = [barracks])
+reactor_barracks = GameUnit(UnitNames.reactor_barracks,
+        consumes = [[reactor, barracks], barracks],
+        acts_as = [barracks])
+tech_lab_factory = GameUnit(UnitNames.tech_lab_factory,
+        consumes = [[tech_lab, factory], factory],
+        acts_as = [factory])
+reactor_factory = GameUnit(UnitNames.reactor_factory,
+        consumes = [[reactor, factory], factory],
+        acts_as = [factory])
+tech_lab_starport = GameUnit(UnitNames.tech_lab_starport,
+        consumes = [[tech_lab, starport], starport],
+        acts_as = [starport])
+reactor_starport = GameUnit(UnitNames.reactor_starport,
+        consumes = [[reactor, starport], starport],
+        acts_as = [starport])
+
+detach_reactor_barracks = GameUnit(UnitNames.detach_reactor_barracks,
+        consumes = [reactor_barracks],
+        yields = [reactor, barracks])
+detach_tech_lab_barracks = GameUnit(UnitNames.detach_tech_lab_barracks,
+        consumes = [tech_lab_barracks],
+        yields = [tech_lab, barracks])
+detach_reactor_factory = GameUnit(UnitNames.detach_reactor_factory,
+        consumes = [reactor_factory],
+        yields = [reactor, factory])
+detach_tech_lab_factory = GameUnit(UnitNames.detach_tech_lab_factory,
+        consumes = [tech_lab_factory],
+        yields = [tech_lab, factory])
+detach_reactor_starport = GameUnit(UnitNames.detach_reactor_starport,
+        consumes = [reactor_starport],
+        yields = [reactor, starport])
+detach_tech_lab_starport = GameUnit(UnitNames.detach_tech_lab_starport,
+        consumes = [tech_lab_starport],
+        yields = [tech_lab, starport])
+
 
 """
 Terran Units
@@ -433,28 +530,28 @@ scv = GameUnit(UnitNames.scv,
         costs = [Mineral(50)])
 marine = GameUnit(UnitNames.marine, [barracks],
         costs = [Mineral(50)])
-marauder = GameUnit(UnitNames.marauder, [barracks, tech_lab],
+marauder = GameUnit(UnitNames.marauder, [tech_lab_barracks],
         costs = [Mineral(100), Gas(25)])
-reaper = GameUnit(UnitNames.reaper, [barracks, tech_lab],
+reaper = GameUnit(UnitNames.reaper, [tech_lab_barracks],
         costs = [Mineral(50), Gas(50)])
 hellion = GameUnit(UnitNames.hellion, [factory],
         costs = [Mineral(100)])
-siege_tank = GameUnit(UnitNames.siege_tank, [factory, tech_lab],
+siege_tank = GameUnit(UnitNames.siege_tank, [tech_lab_factory],
         costs = [Mineral(150), Gas(125)])
-thor = GameUnit(UnitNames.thor, [factory, tech_lab, armory],
+thor = GameUnit(UnitNames.thor, [tech_lab_factory, armory],
         costs = [Mineral(300), Gas(200)])
-ghost = GameUnit(UnitNames.ghost, [barracks, tech_lab, ghost_academy],
+ghost = GameUnit(UnitNames.ghost, [tech_lab_barracks, ghost_academy],
         costs = [Mineral(200), Gas(100)])
 viking = GameUnit(UnitNames.viking, [starport],
         costs = [Mineral(150), Gas(75)])
 medivac = GameUnit(UnitNames.medivac, [starport],
         costs = [Mineral(100), Gas(100)])
-banshee = GameUnit(UnitNames.banshee, [starport, tech_lab],
+banshee = GameUnit(UnitNames.banshee, [tech_lab_starport],
         costs = [Mineral(150), Gas(100)])
-raven = GameUnit(UnitNames.raven, [starport, tech_lab],
+raven = GameUnit(UnitNames.raven, [tech_lab_starport],
         costs = [Mineral(100), Gas(200)])
 battlecruiser = GameUnit(UnitNames.battlecruiser,
-        [starport, tech_lab, fusion_core],
+        [tech_lab_starport, fusion_core],
         costs = [Mineral(300), Gas(200)])
 
 
@@ -471,6 +568,11 @@ protoss_units = [ nexus, pylon, assimilator, gateway, cybernetics_core,
         phoenix, void_ray, carrier, mothership, immortal, colossus,
         observer, warp_prism ]
 terran_units = [ command_center, scv, supply_depot, refinery, barracks,
+        tech_lab_barracks, tech_lab_factory, tech_lab_starport,
+        reactor_barracks, reactor_factory, reactor_starport,
+        detach_reactor_barracks, detach_tech_lab_barracks,
+        detach_reactor_factory, detach_tech_lab_factory,
+        detach_reactor_starport, detach_tech_lab_starport,
         tech_lab, reactor, engineering_bay, missile_turret, marine,
         marauder, reaper, planetary_fortress, sentry_tower, bunker, factory,
         hellion, siege_tank, armory, thor, orbital_command, ghost_academy,
