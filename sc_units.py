@@ -49,11 +49,10 @@ class GameUnit(object):
             self._deps.append(other)
 
     def valid_with_respect_to(self, active, available):
-        if self.consumes and not self.consumes_with_respect_to(active):
+        try:
+            self.consumes_with_respect_to(active)
+        except Exception, e:
             return False
-        for more in self.consumes_with_respect_to(active):
-            if more not in active:
-                return False
         for req in self.requirements:
             if req not in available:
                 return False
@@ -95,7 +94,6 @@ class GameUnit(object):
     def consumes(self):
         return self._consumes
 
-    @decorators.apply_f(list)
     def consumes_with_respect_to(self, active):
         def can_remove_each(_remove_from, removed):
             remove_from = _remove_from[:]
@@ -105,20 +103,16 @@ class GameUnit(object):
                 else:
                     return False
             return True
-        active_contains = functools.partial(operator.contains, active)
         if any(map(decorators.is_iterable, self.consumes)):
             for sub in self.consumes:
-                if decorators.is_iterable(sub):
-                    if can_remove_each(active, sub):
-                        for more in sub:
-                            yield more
-                else:
-                    if can_remove_each(active, [sub]):
-                        yield sub
+                if not decorators.is_iterable(sub):
+                    sub = [sub]
+                if can_remove_each(active, sub):
+                    return sub
         else:
             if can_remove_each(active, self.consumes):
-                for more in self.consumes:
-                    yield more
+                return self.consumes
+        raise Exception('%s attempted tricky consume' % self)
 
     @property
     def yields(self):
@@ -161,14 +155,6 @@ class GameUnit(object):
     def __str__(self):
         return self.name
 
-class RefundUnit(GameUnit):
-    def __init__(self, *args, **kwargs):
-        super(RefundUnit, self).__init__(*args, **kwargs)
-        self._yields = []
-        for sub in self.consumes:
-            for more in sub.consumes:
-                self._yields.append(more)
-
 @decorators.apply_f(list)
 def unit_wrapper(unit):
     if unit.yields:
@@ -178,6 +164,7 @@ def unit_wrapper(unit):
         yield unit
 
 class UnitNames:
+    innate = 'Innate'
     hatchery = 'Hatchery'
     drone = 'Drone'
     overlord = 'Overlord'
@@ -281,6 +268,9 @@ class UnitNames:
     detach_reactor_barracks = 'Detach Reactored Barracks'
     detach_reactor_factory = 'Detach Reactored Factory'
     detach_reactor_starport = 'Detach Reactored Starport'
+
+
+innate = GameUnit(UnitNames.innate)
 
 """
 Zerg structures
@@ -462,9 +452,9 @@ refinery = GameUnit(UnitNames.refinery,
         costs = [Mineral(75)])
 barracks = GameUnit(UnitNames.barracks, [supply_depot],
         costs = [Mineral(150)])
-tech_lab = GameUnit(UnitNames.tech_lab, [barracks],
+tech_lab = GameUnit(UnitNames.tech_lab, [innate],
         costs = [Mineral(50), Gas(25)])
-reactor = GameUnit(UnitNames.reactor, [barracks],
+reactor = GameUnit(UnitNames.reactor, [innate],
         costs = [Mineral(50), Gas(50)])
 engineering_bay = GameUnit(UnitNames.engineering_bay, [command_center],
         costs = [Mineral(125)])
@@ -494,36 +484,42 @@ fusion_core = GameUnit(UnitNames.fusion_core, [starport],
         costs = [Mineral(150), Gas(100)])
 
 tech_lab_barracks = GameUnit(UnitNames.tech_lab_barracks,
-        consumes = [tech_lab, barracks],
+        consumes = [[tech_lab, barracks], barracks],
         acts_as = [barracks])
 reactor_barracks = GameUnit(UnitNames.reactor_barracks,
-        consumes = [reactor, barracks],
+        consumes = [[reactor, barracks], barracks],
         acts_as = [barracks])
 tech_lab_factory = GameUnit(UnitNames.tech_lab_factory,
-        consumes = [tech_lab, factory],
+        consumes = [[tech_lab, factory], factory],
         acts_as = [factory])
 reactor_factory = GameUnit(UnitNames.reactor_factory,
-        consumes = [reactor, factory],
+        consumes = [[reactor, factory], factory],
         acts_as = [factory])
 tech_lab_starport = GameUnit(UnitNames.tech_lab_starport,
-        consumes = [tech_lab, starport],
+        consumes = [[tech_lab, starport], starport],
         acts_as = [starport])
 reactor_starport = GameUnit(UnitNames.reactor_starport,
-        consumes = [reactor, starport],
+        consumes = [[reactor, starport], starport],
         acts_as = [starport])
 
-detach_reactor_barracks = RefundUnit(UnitNames.detach_reactor_barracks,
-        consumes = [reactor_barracks])
-detach_tech_lab_barracks = RefundUnit(UnitNames.detach_tech_lab_barracks,
-        consumes = [tech_lab_barracks])
-detach_reactor_factory = RefundUnit(UnitNames.detach_reactor_factory,
-        consumes = [reactor_factory])
-detach_tech_lab_factory = RefundUnit(UnitNames.detach_tech_lab_factory,
-        consumes = [tech_lab_factory])
-detach_reactor_starport = RefundUnit(UnitNames.detach_reactor_starport,
-        consumes = [reactor_starport])
-detach_tech_lab_starport = RefundUnit(UnitNames.detach_tech_lab_starport,
-        consumes = [tech_lab_starport])
+detach_reactor_barracks = GameUnit(UnitNames.detach_reactor_barracks,
+        consumes = [reactor_barracks],
+        yields = [reactor, barracks])
+detach_tech_lab_barracks = GameUnit(UnitNames.detach_tech_lab_barracks,
+        consumes = [tech_lab_barracks],
+        yields = [tech_lab, barracks])
+detach_reactor_factory = GameUnit(UnitNames.detach_reactor_factory,
+        consumes = [reactor_factory],
+        yields = [reactor, factory])
+detach_tech_lab_factory = GameUnit(UnitNames.detach_tech_lab_factory,
+        consumes = [tech_lab_factory],
+        yields = [tech_lab, factory])
+detach_reactor_starport = GameUnit(UnitNames.detach_reactor_starport,
+        consumes = [reactor_starport],
+        yields = [reactor, starport])
+detach_tech_lab_starport = GameUnit(UnitNames.detach_tech_lab_starport,
+        consumes = [tech_lab_starport],
+        yields = [tech_lab, starport])
 
 
 """
@@ -574,8 +570,9 @@ protoss_units = [ nexus, pylon, assimilator, gateway, cybernetics_core,
 terran_units = [ command_center, scv, supply_depot, refinery, barracks,
         tech_lab_barracks, tech_lab_factory, tech_lab_starport,
         reactor_barracks, reactor_factory, reactor_starport,
-        detach_tech_lab_barracks, detach_tech_lab_factory,
-        detach_tech_lab_starport,
+        detach_reactor_barracks, detach_tech_lab_barracks,
+        detach_reactor_factory, detach_tech_lab_factory,
+        detach_reactor_starport, detach_tech_lab_starport,
         tech_lab, reactor, engineering_bay, missile_turret, marine,
         marauder, reaper, planetary_fortress, sentry_tower, bunker, factory,
         hellion, siege_tank, armory, thor, orbital_command, ghost_academy,
