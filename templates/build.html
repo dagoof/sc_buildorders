@@ -7,16 +7,25 @@
     </div>
     </div>
     <div class='row'>
-        <div class='span8'>
+        <div class='span-one-third'>
             <ul>
-                {% for active in build.order.active_units %}
+                {% for unit in build.order._unit_order %}
                 <li>
-                    {{ active }}
+                    {{ unit }}
                 </li>
                 {% endfor %}
             </ul>
         </div>
-        <div class='span8'>
+        <div class='span-one-third'>
+            <ul>
+                {% for unit in build.order.active_units %}
+                <li>
+                    {{ unit }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class='span-one-third'>
             <ul>
                 {% for available in build.order.available_tech %}
                 <li>
