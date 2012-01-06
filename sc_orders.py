@@ -1,5 +1,5 @@
 import functools, sc_units, operator, itertools
-import decorators
+import decorators, func_utils
 
 class BuildElement(object):
     def __init__(self, unit):
@@ -32,6 +32,16 @@ class BuildOrder(object):
         return filter(operator.methodcaller('valid_with_respect_to',
             self.active_units,
             self.available_units), self._race_units)
+
+    @property
+    def available_tech_tree(self):
+        tech_tree = {}
+        for unit, tech_path in zip(self.available_tech,
+                map(operator.attrgetter('full_requirements'),
+                    self.available_tech)):
+            func_utils.dict_create_path(tech_path,
+                    tech_tree).update({ unit : {} })
+        return tech_tree
 
     def add_unit(self, unit):
         if unit.valid_with_respect_to(self.active_units,
