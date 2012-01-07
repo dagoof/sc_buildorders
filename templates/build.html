@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 
+{% macro tech_tree(obj) %}
+<ul>
+    {% for unit, more in obj.items() %}
+    <li>
+        <a href='{{ url_for('build_add',
+            build_id = build.id, unit = unit) }}'>{{ unit }}</a>
+        <div>{{ tech_tree(more) }}</div>
+    </li>
+    {% endfor %}
+</ul>
+{% endmacro %}
 
 {% block main %}
     <div class='row'>
@@ -26,13 +37,7 @@
             </ul>
         </div>
         <div class='span-one-third'>
-            <ul>
-                {% for available in build.order.available_tech %}
-                <li>
-                    <a href='{{ url_for('build_add', build_id = build.id, unit = available) }}'>{{ available }}</a>
-                </li>
-                {% endfor %}
-            </ul>
+            {{ tech_tree(build.order.available_tech_tree) }}
         </div>
     </div>
 {% endblock %}
