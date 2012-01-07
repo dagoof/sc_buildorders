@@ -14,12 +14,63 @@ app.config.from_object(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///build_orders.db'
 db = SQLAlchemy(app)
 
+class TrieNode(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    parent_id = db.Column(db.Integer, db.ForeignKey('trienode.id'),
+            nullable = True)
+    parent = db.relationship(TrieNode, backref = db.backref('children'))
+    index = db.Column(db.Integer, nullable = False)
+    unit_name = db.Column(db.String, nullable = False)
+
+    def __init__(self, parent, index, unit_name):
+        self.parent = parent
+        self.index = index
+        self.unit_name = unit_name
+
+    @property
+    def unit(self):
+        return all_gameunits[self.unit_name]
+
+    def __repr__(self):
+        return '<TrieNode %r>' % self.unit
+
 class Build(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     race = db.Column(db.String, nullable = False)
+    trie_id = db.Column(db.Integer, db.ForeignKey('trienode.id'),
+            nullable = False)
+    trie = db.relationship(TrieNode, backref = db.backref('builds'))
 
     def __init__(self, race):
         self.race = race
+
+    def add_unit(self, unit_name):
+        for child in self.trie.children:
+            if child.unit_name == unit_name and\
+                    child.index = self.next_index:
+                self.trie = child
+                db.session.commit()
+                return child
+        self.trie = TrieNode(self.trie, self.next_index, unit_name)
+        db.session.add(self.trie)
+        db.session.commit()
+        return self.trie
+
+    @staticmethod
+    def from_order(race, order):
+        build = Build(race)
+        if 
+        for unit in 
+        if TrieNode.query.filter_by(
+        if self.race
+
+
+
+        for unit in order._unit_order:
+
+    @property
+    def elements(self):
+        return self.trie.full_ancestry
 
     @property
     def units(self):
