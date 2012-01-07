@@ -1,20 +1,9 @@
-import functools, collections, jinja2, operator, decorators
+import functools, collections, jinja2, operator, decorators, func_utils
 from flask import Flask, request, redirect, url_for, render_template, g,\
         session, abort, jsonify, flash
 from flaskext.sqlalchemy import SQLAlchemy
 from sc_units import all_gameunits
 from sc_orders import race_orders, race_builds
-
-def map_sub(f, _iter):
-    _part = functools.partial(map_sub, f)
-    if isinstance(_iter, collections.Mapping):
-        k, v = zip(*_iter.items())
-        return dict(zip(k, _part(v)))
-    elif isinstance(_iter, collections.Sequence) and not\
-            isinstance(_iter, basestring):
-        return map(_part, _iter)
-    else:
-        return f(_iter)
 
 api_func = decorators.apply_f(decorators.obj_to_kwargs(jsonify))
 
@@ -85,7 +74,7 @@ def index():
     return 'hello world'
 
 def _unit_options(unit):
-    return map_sub(str, all_gameunits[unit].data_obj)
+    return func_utils.map_sub(str, all_gameunits[unit].data_obj)
 
 @app.route('/api/unit_options/<unit>')
 @api_func

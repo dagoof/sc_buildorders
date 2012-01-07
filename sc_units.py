@@ -1,5 +1,5 @@
 import functools, operator, itertools
-import decorators
+import decorators, func_utils
 
 all_gameunits = {}
 
@@ -103,9 +103,9 @@ class GameUnit(object):
                 else:
                     return False
             return True
-        if any(map(decorators.is_iterable, self.consumes)):
+        if any(map(func_utils.is_iterable, self.consumes)):
             for sub in self.consumes:
-                if not decorators.is_iterable(sub):
+                if not func_utils.is_iterable(sub):
                     sub = [sub]
                 if can_remove_each(active, sub):
                     return sub

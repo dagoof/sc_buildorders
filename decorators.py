@@ -20,6 +20,3 @@ def obj_to_kwargs(f):
         return f(**obj)
     return _wrapped
 
-def is_iterable(o):
-    return isinstance(o, collections.Sequence) and not isinstance(o, basestring)
-
