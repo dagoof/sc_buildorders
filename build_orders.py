@@ -41,8 +41,9 @@ class Build(db.Model):
             nullable = False)
     trie = db.relationship(TrieNode, backref = db.backref('builds'))
 
-    def __init__(self, race):
+    def __init__(self, race, trie):
         self.race = race
+        self.trie = trie
 
     def add_unit(self, unit_name):
         for child in self.trie.children:
@@ -58,15 +59,16 @@ class Build(db.Model):
 
     @staticmethod
     def from_order(race, order):
-        build = Build(race)
-        if 
-        for unit in 
-        if TrieNode.query.filter_by(
-        if self.race
-
-
-
-        for unit in order._unit_order:
+        first_node = TrieNode.query.filter_by(parent = None,
+                unit_name = str(unit)).first()
+        if first_node:
+            build = Build(race, first_node)
+        else:
+            build = Build(race, TrieNode(None, 0, str(unit)))
+        db.session.add(build)
+        db.session.commit()
+        for unit in order._unit_order[1:]:
+            build.add_unit(str(unit))
 
     @property
     def elements(self):
