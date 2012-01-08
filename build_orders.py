@@ -11,14 +11,14 @@ SECRET_KEY = 'devkey'
 DEBUG = True
 app = Flask(__name__)
 app.config.from_object(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///build_orders.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///trie_build_orders.db'
 db = SQLAlchemy(app)
 
-class TrieNode(db.Model):
+class Node(db.Model):
     id = db.Column(db.Integer, primary_key = True)
-    parent_id = db.Column(db.Integer, db.ForeignKey('trienode.id'),
+    parent_id = db.Column(db.Integer, db.ForeignKey('node.id'),
             nullable = True)
-    parent = db.relationship(TrieNode, backref = db.backref('children'))
+    parent = db.relationship('Node', remote_side = [ id ])
     index = db.Column(db.Integer, nullable = False)
     unit_name = db.Column(db.String, nullable = False)
 
@@ -32,14 +32,15 @@ class TrieNode(db.Model):
         return all_gameunits[self.unit_name]
 
     def __repr__(self):
-        return '<TrieNode %r>' % self.unit
+        return '<Node %s %r>' % (self.index, self.unit)
 
 class Build(db.Model):
+    START_INDEX = 0
     id = db.Column(db.Integer, primary_key = True)
     race = db.Column(db.String, nullable = False)
-    trie_id = db.Column(db.Integer, db.ForeignKey('trienode.id'),
+    trie_id = db.Column(db.Integer, db.ForeignKey('node.id'),
             nullable = False)
-    trie = db.relationship(TrieNode, backref = db.backref('builds'))
+    trie = db.relationship(Node, backref = db.backref('builds'))
 
     def __init__(self, race, trie):
         self.race = race
@@ -48,27 +49,30 @@ class Build(db.Model):
     def add_unit(self, unit_name):
         for child in self.trie.children:
             if child.unit_name == unit_name and\
-                    child.index = self.next_index:
+                    child.index == self.next_index:
                 self.trie = child
                 db.session.commit()
                 return child
-        self.trie = TrieNode(self.trie, self.next_index, unit_name)
+        self.trie = Node(self.trie, self.next_index, unit_name)
         db.session.add(self.trie)
         db.session.commit()
         return self.trie
 
     @staticmethod
     def from_order(race, order):
-        first_node = TrieNode.query.filter_by(parent = None,
-                unit_name = str(unit)).first()
-        if first_node:
-            build = Build(race, first_node)
-        else:
-            build = Build(race, TrieNode(None, 0, str(unit)))
-        db.session.add(build)
-        db.session.commit()
-        for unit in order._unit_order[1:]:
-            build.add_unit(str(unit))
+        if order:
+            first_unit = next(iter(order._unit_order))
+            first_node = Node.query.filter_by(parent = None,
+                    unit_name = str(first_unit)).first()
+            if first_node:
+                build = Build(race, first_node)
+            else:
+                build = Build(race,
+                        Node(None, Build.START_INDEX, str(first_unit)))
+            for unit in order._unit_order[1:]:
+                build.add_unit(str(unit))
+            db.session.add(build)
+            db.session.commit()
 
     @property
     def elements(self):
@@ -85,30 +89,10 @@ class Build(db.Model):
     @property
     def next_index(self):
         indexes = map(operator.attrgetter('index'), self.elements)
-        return indexes and max(indexes) + 1 or 0
+        return indexes and max(indexes) + 1 or Build.START_INDEX
 
     def __repr__(self):
         return '<%s Build %r>' % (self.race, self.id)
-
-class Element(db.Model):
-    id = db.Column(db.Integer, primary_key = True)
-    build_id = db.Column(db.Integer, db.ForeignKey('build.id'),
-            nullable = False)
-    build = db.relationship(Build, backref = db.backref('elements'))
-    index = db.Column(db.Integer, nullable = False)
-    unit_name = db.Column(db.String, nullable = False)
-
-    def __init__(self, build, index, unit_name):
-        self.build = build
-        self.index = index
-        self.unit_name = unit_name
-
-    @property
-    def unit(self):
-        return all_gameunits[self.unit_name]
-
-    def __repr__(self):
-        return '<Element %r>' % self.unit
 
 def build_from_order(race, order):
     build = Build(race)
@@ -146,21 +130,13 @@ def build(build_id):
 
 @app.route('/build/create/<race>')
 def build_create(race):
-    build = build_from_order(race, race_builds[race])
-    db.session.add(build)
-    db.session.add_all(build.elements)
-    db.session.commit()
+    build = Build.from_order(race, race_builds[race])
     return redirect(url_for('build', build_id = build.id))
 
 @app.route('/build/add/<int:build_id>/<unit>')
 def build_add(build_id, unit):
     build = Build.query.filter_by(id = build_id).first()
-    element = Element(build, build.next_index, unit)
-    db.session.add(element)
-    try:
-        db.session.commit()
-    except Exception, e:
-        db.session.rollback()
+    build.add_unit(unit)
     return redirect(url_for('build', build_id = build_id))
 
 if __name__ == '__main__':
