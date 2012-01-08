@@ -18,7 +18,8 @@ class Node(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     parent_id = db.Column(db.Integer, db.ForeignKey('node.id'),
             nullable = True)
-    parent = db.relationship('Node', remote_side = [ id ])
+    parent = db.relationship('Node', remote_side = [ id ],
+            backref = 'children')
     index = db.Column(db.Integer, nullable = False)
     unit_name = db.Column(db.String, nullable = False)
 
@@ -30,6 +31,14 @@ class Node(db.Model):
     @property
     def unit(self):
         return all_gameunits[self.unit_name]
+
+    @property
+    @decorators.apply_f(list)
+    def full_ancestry(self):
+        if self.parent:
+            for more in self.parent.full_ancestry:
+                yield more
+        yield self
 
     def __repr__(self):
         return '<Node %s %r>' % (self.index, self.unit)
@@ -73,6 +82,8 @@ class Build(db.Model):
                 build.add_unit(str(unit))
             db.session.add(build)
             db.session.commit()
+            return build
+        raise Exception('Cannot initialize a build based on an empty order')
 
     @property
     def elements(self):
@@ -131,6 +142,7 @@ def build(build_id):
 @app.route('/build/create/<race>')
 def build_create(race):
     build = Build.from_order(race, race_builds[race])
+    print build
     return redirect(url_for('build', build_id = build.id))
 
 @app.route('/build/add/<int:build_id>/<unit>')
