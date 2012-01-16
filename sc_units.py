@@ -22,6 +22,10 @@ class GameResource(object):
         return '<{_class}: {amount}>'.format(amount = self.amount,
                 _class = self.__class__.__name__)
 
+    def __str__(self):
+        return '{_class}: {amount}'.format(amount = self.amount,
+                _class = self.__class__.__name__)
+
 class Mineral(GameResource):
     pass
 
