@@ -2,8 +2,7 @@ import functools, collections, jinja2, operator, decorators, func_utils
 from flask import Flask, request, redirect, url_for, render_template, g,\
         session, abort, jsonify, flash
 from flaskext.sqlalchemy import SQLAlchemy
-from sc_units import all_gameunits
-from sc_orders import race_orders, race_builds
+import sc_units, sc_orders
 
 api_func = decorators.apply_f(decorators.obj_to_kwargs(jsonify))
 
@@ -30,7 +29,7 @@ class Node(db.Model):
 
     @property
     def unit(self):
-        return all_gameunits[self.unit_name]
+        return sc_units.all_gameunits[self.unit_name]
 
     @property
     @decorators.apply_f(list)
@@ -94,8 +93,17 @@ class Build(db.Model):
         return map(operator.attrgetter('unit'), self.elements)
 
     @property
+    @decorators.apply_f(list)
+    def distinguishing_features(self):
+        for point in self.elements[8:]:
+            if point.unit.allows:
+                units = map(operator.attrgetter('unit'), point.full_ancestry)
+                order = sc_orders.race_orders[self.race](*units)
+                yield point.unit, order.supply
+
+    @property
     def order(self):
-        return race_orders[self.race](*self.units)
+        return sc_orders.race_orders[self.race](*self.units)
 
     @property
     def next_index(self):
@@ -122,7 +130,7 @@ def index():
     return 'hello world'
 
 def _unit_options(unit):
-    return func_utils.map_sub(str, all_gameunits[unit].data_obj)
+    return func_utils.map_sub(str, sc_units.all_gameunits[unit].data_obj)
 
 @app.route('/api/unit_options/<unit>')
 @api_func
@@ -139,10 +147,14 @@ def build(build_id):
     build = Build.query.filter_by(id = build_id).first()
     return render_template('build.html', build = build)
 
+@app.route('/builds')
+def builds():
+    builds = Build.query.all()
+    return render_template('builds.html', builds = builds)
+
 @app.route('/build/create/<race>')
 def build_create(race):
-    build = Build.from_order(race, race_builds[race])
-    print build
+    build = Build.from_order(race, sc_orders.race_builds[race])
     return redirect(url_for('build', build_id = build.id))
 
 @app.route('/build/add/<int:build_id>/<unit>')

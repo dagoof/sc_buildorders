@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block main %}
+    <div class='row page-header'>
+        <div class='span4'>
+            <h1>
+                All builds
+            </h1>
+        </div>
+        <div class='span12'>
+            <h1>
+                <small>
+                    ~
+                </small>
+            </h1>
+        </div>
+    </div>
+    {% for build in builds %}
+    <div class='row'>
+        <div class='span4'>
+            <h1>
+                {{ build.race|capitalize }}
+            </h1>
+        </div>
+        <div class='span12'>
+            <p>
+            {% for unit, supply in build.distinguishing_features %}
+            {{ supply.amount }} {{ unit }}, 
+            {% endfor %}
+            </p>
+            <p>
+            {{ build.order.active_units|join(', ') }}
+            </p>
+        </div>
+    </div>
+    {% endfor %}
+{% endblock %}
