@@ -144,7 +144,7 @@ class BuildDetails(db.Model):
             db.ForeignKey('user.id'), nullable = False)
     user = db.relationship(User, 
             backref = 'build_details')
-    created = db.DateTime(nullable = False)
+    created = db.DateTime()
     description = db.Column(db.String, nullable = False)
 
     def __init__(self, build, user, description):
