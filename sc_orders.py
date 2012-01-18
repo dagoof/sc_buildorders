@@ -1,10 +1,6 @@
 import functools, sc_units, operator, itertools
 import decorators, func_utils
 
-class BuildElement(object):
-    def __init__(self, unit):
-        pass
-
 class BuildOrder(object):
     def __init__(self, race_units, *units):
         self._race_units = race_units
