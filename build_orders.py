@@ -1,14 +1,13 @@
-import functools, collections, jinja2, operator, decorators, func_utils
-from flask import Flask, request, redirect, url_for, render_template, g,\
-        session, abort, jsonify, flash
+import functools, operator, datetime
+import flask, bcrypt
 from flaskext.sqlalchemy import SQLAlchemy
-import sc_units, sc_orders
+import func_utils, decorators, sc_units, sc_orders
 
-api_func = decorators.apply_f(decorators.obj_to_kwargs(jsonify))
+api_func = decorators.apply_f(decorators.obj_to_kwargs(flask.jsonify))
 
 SECRET_KEY = 'devkey'
 DEBUG = True
-app = Flask(__name__)
+app = flask.Flask(__name__)
 app.config.from_object(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///trie_build_orders.db'
 db = SQLAlchemy(app)
@@ -69,7 +68,7 @@ class Build(db.Model):
     @staticmethod
     def from_order(race, order):
         if order:
-            first_unit = next(iter(order._unit_order))
+            first_unit = next(iter(order._unit_order), '')
             first_node = Node.query.filter_by(parent = None,
                     unit_name = str(first_unit)).first()
             if first_node:
@@ -113,17 +112,73 @@ class Build(db.Model):
     def __repr__(self):
         return '<%s Build %r>' % (self.race, self.id)
 
-def build_from_order(race, order):
-    build = Build(race)
-    for unit in order._unit_order:
-        Element(build, build.next_index, str(unit))
-    return build
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    username = db.Column(db.String, unique = True, nullable = False)
+    email = db.Column(db.String, unique = True, nullable = False)
+    password = db.Column(db.String, nullable = False)
+
+    def __init__(self, username, email, password):
+        self.username = username
+        self.email = email
+        self.set_password(password)
+
+    def create_password(self, password):
+        return bcrypt.hashpw(password, bcrypt.gensalt())
+
+    def set_password(self, password):
+        self.password = self.create_password(password)
+        return self.password
+
+    def check_password(self, password):
+        return bcrypt.hashpw(password, self.password) == self.password
+
+
+class BuildDetails(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    build_id = db.Column(db.Integer, 
+            db.ForeignKey('build.id'), nullable = False)
+    build = db.relationship(Build, 
+            backref = db.backref('details', uselist = False))
+    user_id = db.Column(db.Integer, 
+            db.ForeignKey('user.id'), nullable = False)
+    user = db.relationship(User, 
+            backref = 'build_details')
+    created = db.DateTime(nullable = False)
+    description = db.Column(db.String, nullable = False)
+
+    def __init__(self, build, user, description):
+        self.build = build
+        self.user = user
+        self.description = description
+        self.created = datetime.datetime.now()
+
+
+class Vote(db.Model):
+    class Values:
+        NO = 0
+        YES = 1
+    id = db.Column(db.Integer, primary_key = True)
+    user_id = db.Column(db.Integer, 
+            db.ForeignKey('user.id'), nullable = False)
+    user = db.relationship(User, 
+            backref = 'build_details')
+    build_details_id = db.Column(db.Integer,
+            db.ForeignKey('builddetails.id'), nullable = False)
+    build_details = db.relationship(BuildDetails, backref = 'votes')
+    value = db.Column(db.Integer, nullable = False)
+
+    def __init__(self, user, build_details, value):
+        self.user = user
+        self.build_details = build_details
+        self.value = value
+
 
 @app.route('/external_render', methods = ['POST'])
 def external_render():
-    return jsonify(template = app.jinja_env.\
-        from_string(request.json['template']).\
-        render(**request.json['context']))
+    return flask.jsonify(template = app.jinja_env.\
+        from_string(flask.request.json['template']).\
+        render(**flask.request.json['context']))
 
 @app.route('/')
 def index():
@@ -139,29 +194,29 @@ def api_unit_options(*args, **kwargs):
 
 @app.route('/unit_options/<unit>')
 def unit_options(*args, **kwargs):
-    return render_template('create.html',
+    return flask.render_template('create.html',
             **_unit_options(*args, **kwargs))
 
 @app.route('/build/<int:build_id>')
 def build(build_id):
     build = Build.query.filter_by(id = build_id).first()
-    return render_template('build.html', build = build)
+    return flask.render_template('build.html', build = build)
 
 @app.route('/builds')
 def builds():
     builds = Build.query.all()
-    return render_template('builds.html', builds = builds)
+    return flask.render_template('builds.html', builds = builds)
 
 @app.route('/build/create/<race>')
 def build_create(race):
     build = Build.from_order(race, sc_orders.race_builds[race])
-    return redirect(url_for('build', build_id = build.id))
+    return flask.redirect(flask.url_for('build', build_id = build.id))
 
 @app.route('/build/add/<int:build_id>/<unit>')
 def build_add(build_id, unit):
     build = Build.query.filter_by(id = build_id).first()
     build.add_unit(unit)
-    return redirect(url_for('build', build_id = build_id))
+    return flask.redirect(flask.url_for('build', build_id = build_id))
 
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', port = 8096)

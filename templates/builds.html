@@ -1,20 +1,6 @@
 {% extends "base.html" %}
 
 {% block main %}
-    <div class='row page-header'>
-        <div class='span4'>
-            <h1>
-                All builds
-            </h1>
-        </div>
-        <div class='span12'>
-            <h1>
-                <small>
-                    ~
-                </small>
-            </h1>
-        </div>
-    </div>
     {% for build in builds %}
     <div class='row'>
         <div class='span4'>
