@@ -1,8 +1,7 @@
 import functools, operator, datetime
 import flask, bcrypt
 import func_utils, decorators, sc_units, sc_orders
-from build_orders import app
-import models
+from build_orders import app, models, forms, flask_decorators
 
 api_func = decorators.apply_f(decorators.obj_to_kwargs(flask.jsonify))
 
@@ -28,6 +27,33 @@ def api_unit_options(*args, **kwargs):
 def unit_options(*args, **kwargs):
     return flask.render_template('create.html',
             **_unit_options(*args, **kwargs))
+
+@app.route('/user/register', methods = ['GET', 'POST'])
+def user_register():
+    form = forms.RegistrationForm(flask.request.form)
+    if flask.request.method == 'POST' and form.validate():
+        user = models.User(**forms.form_values(form))
+        if models.can_commit(user):
+            return flask.redirect(flask.url_for('index'))
+        else:
+            flask.flash('Profile already exists')
+    return flask.render_template('generic_form.html', form = form)
+
+@app.route('/user/login', methods = ['GET', 'POST'])
+def user_login():
+    form = forms.LoginForm(flask.request.form)
+    if flask.request.method == 'POST' and form.validate():
+        user = models.User.query.filter_by(email = form.email.data).first()
+        if user and user.check_password(form.password.data):
+            flask.session[models.User.SESSION_KEY] = user.username
+            return flask.redirect(flask.url_for('index'))
+        else:
+            if user:
+                flask.flash('Invalid password')
+            else:
+                flash('User not found')
+    return flask.render_template('login.html', form = form)
+
 
 @app.route('/build/<int:build_id>')
 def build(build_id):

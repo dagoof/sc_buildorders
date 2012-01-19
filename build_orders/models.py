@@ -2,6 +2,16 @@ import functools, operator, datetime, bcrypt
 import decorators, sc_units, sc_orders
 from build_orders import db
 
+def can_commit(*models):
+    db.session.add_all(*models)
+    try:
+        db.session.commit()
+        return True
+    except:
+        db.session.rollback()
+        return False
+
+
 class Node(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     parent_id = db.Column(db.Integer, db.ForeignKey('node.id'),
@@ -102,14 +112,14 @@ class Build(db.Model):
     def __repr__(self):
         return '<%s Build %r>' % (self.race, self.id)
 
-"""
 class User(db.Model):
+    SESSION_KEY = 'user'
     id = db.Column(db.Integer, primary_key = True)
     username = db.Column(db.String, unique = True, nullable = False)
     email = db.Column(db.String, unique = True, nullable = False)
     password = db.Column(db.String, nullable = False)
 
-    def __init__(self, username, email, password):
+    def __init__(self, username, email, password, **kwargs):
         self.username = username
         self.email = email
         self.set_password(password)
@@ -138,7 +148,7 @@ class BuildDetails(db.Model):
     created = db.DateTime()
     description = db.Column(db.String, nullable = False)
 
-    def __init__(self, build, user, description):
+    def __init__(self, build, user, description, **kwargs):
         self.build = build
         self.user = user
         self.description = description
@@ -163,5 +173,4 @@ class Vote(db.Model):
         self.user = user
         self.build_details = build_details
         self.value = value
-"""
 
