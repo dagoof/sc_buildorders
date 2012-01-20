@@ -1,11 +1,11 @@
-import flask
+import flask, functools
 from build_orders import app, models
 
 def logged_in():
     return getattr(flask.g, 'user', None)
 
 def login_required(f):
-    @wraps(f)
+    @functools.wraps(f)
     def decorated_function(*args, **kwargs):
         if not logged_in():
             return redirect(flask.url_for('user_login'))

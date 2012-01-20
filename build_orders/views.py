@@ -5,15 +5,9 @@ from build_orders import app, models, forms, flask_decorators
 
 api_func = decorators.apply_f(decorators.obj_to_kwargs(flask.jsonify))
 
-@app.route('/external_render', methods = ['POST'])
-def external_render():
-    return flask.jsonify(template = app.jinja_env.\
-        from_string(flask.request.json['template']).\
-        render(**flask.request.json['context']))
-
 @app.route('/')
 def index():
-    return 'hello world'
+    return flask.redirect(flask.url_for('builds'))
 
 def _unit_options(unit):
     return func_utils.map_sub(str, sc_units.all_gameunits[unit].data_obj)
@@ -51,9 +45,27 @@ def user_login():
             if user:
                 flask.flash('Invalid password')
             else:
-                flash('User not found')
-    return flask.render_template('login.html', form = form)
+                flask.flash('User not found')
+    return flask.render_template('generic_form.html', form = form)
 
+@app.route('/user/logout')
+@flask_decorators.login_required
+def user_logout():
+    flask.session.pop(models.User.SESSION_KEY, None)
+    return flask.redirect(flask.url_for('index'))
+
+@app.route('/user/builds')
+@flask_decorators.login_required
+def user_builds():
+    builds = models.BuildDetails.query.filter_by(user = flask.g.user)
+    return flask.render_template('builds.html',
+            builds = map(operator.attrgetter('build'), builds))
+
+
+@app.route('/build/create')
+@flask_decorators.login_required
+def build_create():
+    return flask.render_template('create.html', races = sc_units.Races.races)
 
 @app.route('/build/<int:build_id>')
 def build(build_id):
@@ -66,11 +78,13 @@ def builds():
     return flask.render_template('builds.html', builds = builds)
 
 @app.route('/build/create/<race>')
-def build_create(race):
+@flask_decorators.login_required
+def build_create_race(race):
     build = models.Build.from_order(race, sc_orders.race_builds[race])
     return flask.redirect(flask.url_for('build', build_id = build.id))
 
 @app.route('/build/add/<int:build_id>/<unit>')
+@flask_decorators.login_required
 def build_add(build_id, unit):
     build = models.Build.query.filter_by(id = build_id).first()
     build.add_unit(unit)

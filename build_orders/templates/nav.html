@@ -4,19 +4,39 @@
             <div class='container'>
                 <h3>
                     {% block logo %}
-                    <a href='#'> Build Orders</a>
+                    <a href='{{ url_for('builds') }}'> Build Orders</a>
                     {% endblock %}
                 </h3>
                 <ul class='nav secondary-nav'>
+                    {% if g.user %}
                     <li>
-                        <a href='#'>recent matches</a>
+                        <a href='{{ url_for('build_create') }}'>
+                            create build
+                        </a>
                     </li>
                     <li>
-                        <a href='#'>popular builds</a>
+                        <a href='{{ url_for('user_builds') }}'>
+                            my builds
+                        </a>
                     </li>
                     <li>
-                        <a href='#'>logout</a>
+                        <a href='{{ url_for('user_logout') }}'>
+                            logout
+                        </a>
                     </li>
+                    {% else %}
+                    <li>
+                        <a href='{{ url_for('user_register') }}'>
+                            register
+                        </a>
+                    </li>
+                    <li>
+                        <a href='{{ url_for('user_login') }}'>
+                            log in
+                        </a>
+                    </li>
+                    {% endif %}
+                    {
                 </ul>
             </div>
         </div>

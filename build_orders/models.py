@@ -3,7 +3,7 @@ import decorators, sc_units, sc_orders
 from build_orders import db
 
 def can_commit(*models):
-    db.session.add_all(*models)
+    db.session.add_all(models)
     try:
         db.session.commit()
         return True
@@ -144,7 +144,7 @@ class BuildDetails(db.Model):
     user_id = db.Column(db.Integer, 
             db.ForeignKey('user.id'), nullable = False)
     user = db.relationship(User, 
-            backref = 'build_details')
+            backref = 'build_retails')
     created = db.DateTime()
     description = db.Column(db.String, nullable = False)
 
@@ -159,13 +159,13 @@ class Vote(db.Model):
     class Values:
         NO = 0
         YES = 1
+        numerical = {NO : -1, YES: 1}
     id = db.Column(db.Integer, primary_key = True)
     user_id = db.Column(db.Integer, 
             db.ForeignKey('user.id'), nullable = False)
-    user = db.relationship(User, 
-            backref = 'build_details')
+    user = db.relationship(User, backref = 'votes')
     build_details_id = db.Column(db.Integer,
-            db.ForeignKey('builddetails.id'), nullable = False)
+            db.ForeignKey('build_details.id'), nullable = False)
     build_details = db.relationship(BuildDetails, backref = 'votes')
     value = db.Column(db.Integer, nullable = False)
 
@@ -173,4 +173,12 @@ class Vote(db.Model):
         self.user = user
         self.build_details = build_details
         self.value = value
+
+    @property
+    def numerical_value(self):
+        return Values.numerical[self.value]
+
+    @staticmethod
+    def aggregated(*votes):
+        return sum(map(operator.attrgetter('numerical_value'), votes))
 
