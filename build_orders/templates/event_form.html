@@ -4,7 +4,9 @@
     <div class='control-group{% if field.errors %} error{% endif %}'>
         <label class='control-label'> {{ field.label }} </label>
         <div class='controls'>
-            {{ field(**kwargs)|safe }}
+            <div class='field'>
+                {{ field(**kwargs)|safe }}
+            </div>
             {% if field.errors %}
             <ul>
                 {% for error in field.errors %}
@@ -15,6 +17,13 @@
         </div>
     </div>
 {% endmacro %}
+
+{% block head %}
+    <link rel='stylesheet' href='/static/css/kalendae.css' type='text/css' charset='utf-8'>
+    <script type='text/javascript' src='/static/js/bootstrap-typeahead.js'></script>
+    <script type='text/javascript' src='/static/js/kalendae.min.js'></script>
+    <script type='text/javascript' src='/static/js/player_search.js'></script>
+{% endblock %}
 
 {% block main %}
     {% with messages = get_flashed_messages() %}
@@ -30,8 +39,13 @@
     <div class='row'>
         <form method='post' class='form-horizontal' action='{{ request.path }}'>
             <fieldset>
-                {% for field in form %}
-                {{ render_field(field) }}
+                {{ render_field(form.name) }}
+                {{ render_field(form.time,
+                    class_ = 'auto-kal') }}
+                {% for field in form.players %}
+                    {{ render_field(field,
+                        class_ = 'typeahead span3',
+                        placeholder = 'Search for players...') }}
                 {% endfor %}
                 <div class='form-actions'>
                     <input type='submit' class='btn-large btn-primary' value='submit'/>

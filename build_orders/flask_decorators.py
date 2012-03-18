@@ -8,9 +8,20 @@ def login_required(f):
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
         if not logged_in():
-            return redirect(flask.url_for('user_login'))
+            return flask.redirect(flask.url_for('user_login'))
         return f(*args, **kwargs)
     return decorated_function
+
+def permission_required(*permissions):
+    def wrapped_view(f):
+        @functools.wraps(f)
+        def decorated_function(*args, **kwargs):
+            for permission in permissions:
+                if permission not in flask.g.user.permissions_list:
+                    flask.abort(403)
+            return f(*args, **kwargs)
+        return decorated_function
+    return wrapped_view
 
 @app.before_request
 def before_request():

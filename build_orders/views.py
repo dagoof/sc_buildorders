@@ -1,7 +1,7 @@
 import functools, operator, datetime
 import flask, bcrypt
 import func_utils, decorators, sc_units, sc_orders
-from build_orders import app, models, forms, flask_decorators
+from build_orders import app, models, forms, flask_decorators, permissions
 
 api_func = decorators.apply_f(decorators.obj_to_kwargs(flask.jsonify))
 
@@ -61,7 +61,6 @@ def user_builds():
     return flask.render_template('builds.html',
             builds = map(operator.attrgetter('build'), builds))
 
-
 @app.route('/build/create')
 @flask_decorators.login_required
 def build_create():
@@ -90,3 +89,24 @@ def build_add(build_id, unit):
     build.add_unit(unit)
     return flask.redirect(flask.url_for('build', build_id = build_id))
 
+@app.route('/event/player_list')
+@api_func
+def event_player_list():
+    return { 'players': map(str, models.Player.query.all()) }
+
+@app.route('/event/<int:event_id>')
+def event(event_id):
+    event = models.Event.query.filter_by(id = event_id).first()
+    return flask.render_template('event.html', event = event)
+
+#@flask_decorators.permission_required(permissions.Permissions.CREATE_EVENT)
+@app.route('/event/create', methods = ['GET', 'POST'])
+@flask_decorators.login_required
+def event_create():
+    form = forms.EventForm(flask.request.form)
+    if flask.request.method == 'POST' and form.validate():
+        event = models.Event(**forms.form_values(form))
+        if models.can_commit(event):
+            return flask.redirect(flask.url_for('event', event_id = event.id))
+        flask.flash('Event name already exists')
+    return flask.render_template('event_form.html', form = form)

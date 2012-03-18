@@ -35,4 +35,15 @@ class LoginForm(wtforms.Form):
     def __str__(self):
         return 'Login'
 
+class EventForm(wtforms.Form):
+    name = wtforms.TextField('Name',
+            [ wtforms.validators.required() ],
+            description = 'Unique name of this event')
+    time = wtforms.DateField('Time',
+            [ wtforms.validators.required() ],
+            format = '%m/%d/%Y',
+            description = 'Time that the event will occur')
+    players = wtforms.FieldList(wtforms.TextField('Player'),
+            min_entries = 2)
+
 

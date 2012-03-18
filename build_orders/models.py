@@ -39,7 +39,8 @@ class Node(db.Model):
         yield self
 
     def __repr__(self):
-        return '<Node %s %r>' % (self.index, self.unit)
+        return '<Node %d %r>' % (self.index, self.unit)
+
 
 class Build(db.Model):
     START_INDEX = 0
@@ -112,6 +113,25 @@ class Build(db.Model):
     def __repr__(self):
         return '<%s Build %r>' % (self.race, self.id)
 
+
+class Permission(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    user_id = db.Column(db.Integer,
+            db.ForeignKey('user.id'), nullable = False)
+    user = db.relationship('User',
+            backref = 'permissions')
+    permission = db.Column(db.String, nullable = False)
+
+    def __init__(self, user, permission, **kwargs):
+        self.user = user
+        self.permission = permission
+
+    def __repr__(self):
+        return '<Permission %s: %s>' % (self.user, self.permission)
+
+    def __str__(self):
+        return self.permission
+
 class User(db.Model):
     SESSION_KEY = 'user'
     id = db.Column(db.Integer, primary_key = True)
@@ -124,6 +144,12 @@ class User(db.Model):
         self.email = email
         self.set_password(password)
 
+    def __repr__(self):
+        return '<User[ %r ] %s>' % (self.id, self.username)
+
+    def __str__(self):
+        return self.username
+
     def create_password(self, password):
         return bcrypt.hashpw(password, bcrypt.gensalt())
 
@@ -133,6 +159,15 @@ class User(db.Model):
 
     def check_password(self, password):
         return bcrypt.hashpw(password, self.password) == self.password
+
+    @property
+    def permissions_list(self):
+        return map(operator.attrgetter('permission'), self.permissions)
+
+    def add_permission(self, *permissions):
+        for permission in permissions:
+            if permission not in self.permissions_list:
+                Permission(self, permission)
 
 
 class BuildDetails(db.Model):
@@ -144,7 +179,7 @@ class BuildDetails(db.Model):
     user_id = db.Column(db.Integer, 
             db.ForeignKey('user.id'), nullable = False)
     user = db.relationship(User, 
-            backref = 'build_retails')
+            backref = 'build_details')
     created = db.DateTime()
     description = db.Column(db.String, nullable = False)
 
@@ -181,4 +216,46 @@ class Vote(db.Model):
     @staticmethod
     def aggregated(*votes):
         return sum(map(operator.attrgetter('numerical_value'), votes))
+
+
+players = db.Table('players',
+        db.Column('player_id', db.Integer, db.ForeignKey('player.id')),
+        db.Column('event_id', db.Integer, db.ForeignKey('event.id')))
+
+class Player(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    name = db.Column(db.String, unique = True, nullable = False)
+    race = db.Column(db.String, nullable = False)
+    description = db.Column(db.String, nullable = True)
+
+    def __init__(self, name, race, description = None, **kwargs):
+        self.name = name
+        self.race = race
+        self.description = description
+
+    def __repr__(self):
+        return '<Player[ %r ] %s>' % (self.id, self.name)
+
+    def __str__(self):
+        return self.name
+
+
+class Event(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    name = db.Column(db.String, unique = True, nullable = False)
+    time = db.DateTime()
+    players = db.relationship(Player,
+            secondary = players, backref = 'events')
+
+    def __init__(self, name, time, **kwargs):
+        self.name = name
+        self.time = time
+
+    def __repr__(self):
+        return '<Event[ %r ] %s (%s)>' % (self.id, self.name,
+                ', '.join(map(str, self.players)))
+
+    def __str__(self):
+        return self.name
+
 
