@@ -97,7 +97,8 @@ class Build(db.Model):
     def distinguishing_features(self):
         for point in self.elements[8:]:
             if point.unit.allows:
-                units = map(operator.attrgetter('unit'), point.parent.full_ancestry)
+                units = map(operator.attrgetter('unit'),
+                    point.parent.full_ancestry)
                 order = sc_orders.race_orders[self.race](*units)
                 yield point.unit, order.supply
 
