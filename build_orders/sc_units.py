@@ -22,13 +22,20 @@ class GameResource(object):
         return '<{_class}: {amount}>'.format(amount = self.amount,
                 _class = self.__class__.__name__)
 
+    def __str__(self):
+        return '{_class}: {amount}'.format(amount = self.amount,
+                _class = self.__class__.__name__)
+
 class Mineral(GameResource):
     pass
 
 class Gas(GameResource):
     pass
 
-game_resources = [Mineral, Gas]
+class Supply(GameResource):
+    pass
+
+game_resources = [Mineral, Gas, Supply]
 
 class GameUnit(object):
     def __init__(self, name, reqs = (), costs = (),
@@ -82,11 +89,10 @@ class GameUnit(object):
     @property
     @decorators.apply_f(list)
     def full_costs(self):
-        _costs = reduce(operator.add,
-                [req.costs for req in self.full_requirements])
-        _costs += self.costs
+        costs = reduce(operator.add, map(operator.attrgetter('costs'),
+            self.full_requirements)) + self.costs
         for resource in game_resources:
-            combined = resource.combine_resources(*_costs)
+            combined = resource.combine_resources(*costs)
             if combined.amount:
                 yield combined
 
@@ -277,7 +283,7 @@ Zerg structures
 """
 
 drone = GameUnit(UnitNames.drone,
-        costs = [Mineral(50)])
+        costs = [Mineral(50), Supply(1)])
 hatchery = GameUnit(UnitNames.hatchery,
         costs = [Mineral(300)],
         consumes = [drone])
@@ -338,32 +344,32 @@ Zerg units
 overlord = GameUnit(UnitNames.overlord,
         costs = [Mineral(100)])
 zergling = GameUnit(UnitNames.zergling, [spawning_pool],
-        costs = [Mineral(25)])
+        costs = [Mineral(25), Supply(.5)])
 overseer = GameUnit(UnitNames.overseer, [lair],
         costs = [Mineral(50), Gas(50)],
         consumes = [overlord],
         acts_as = [overlord])
 queen = GameUnit(UnitNames.queen, [spawning_pool],
-        costs = [Mineral(150)])
+        costs = [Mineral(150), Supply(2)])
 ultralisk = GameUnit(UnitNames.ultralisk, [ultralisk_den],
-        costs = [Mineral(300), Gas(200)])
+        costs = [Mineral(300), Gas(200), Supply(6)])
 nydus_worm = GameUnit(UnitNames.nydus_worm, [nydus_network],
         costs = [Mineral(100), Gas(100)])
 hydralisk = GameUnit(UnitNames.hydralisk, [hydralisk_den],
-        costs = [Mineral(100), Gas(50)])
+        costs = [Mineral(100), Gas(50), Supply(2)])
 corrupter = GameUnit(UnitNames.corrupter, [spire],
-        costs = [Mineral(150), Gas(100)])
+        costs = [Mineral(150), Gas(100), Supply(2)])
 mutalisk = GameUnit(UnitNames.mutalisk, [spire],
-        costs = [Mineral(100), Gas(100)])
+        costs = [Mineral(100), Gas(100), Supply(2)])
 infestor = GameUnit(UnitNames.infestor, [infestation_pit],
-        costs = [Mineral(100), Gas(150)])
+        costs = [Mineral(100), Gas(150), Supply(2)])
 roach = GameUnit(UnitNames.roach, [roach_warren],
-        costs = [Mineral(75), Gas(25)])
+        costs = [Mineral(75), Gas(25), Supply(2)])
 baneling = GameUnit(UnitNames.baneling, [baneling_nest],
-        costs = [Mineral(25), Gas(25)],
+        costs = [Mineral(25), Gas(25), Supply(.5)],
         consumes = [zergling])
 brood_lord = GameUnit(UnitNames.brood_lord, [greater_spire],
-        costs = [Mineral(150), Gas(150)],
+        costs = [Mineral(150), Gas(150), Supply(4)],
         consumes = [corrupter])
 
 
@@ -404,40 +410,41 @@ Protoss units
 """
 
 probe = GameUnit(UnitNames.probe,
-        costs = [Mineral(50)])
+        costs = [Mineral(50), Supply(1)])
 zealot = GameUnit(UnitNames.zealot, [gateway],
-        costs = [Mineral(100)])
+        costs = [Mineral(100), Supply(2)])
 sentry = GameUnit(UnitNames.sentry, [cybernetics_core],
-        costs = [Mineral])
+        costs = [Mineral(50), Gas(100), Supply(2)])
 stalker = GameUnit(UnitNames.stalker, [cybernetics_core],
-        costs = [Mineral(125), Gas(50)])
+        costs = [Mineral(125), Gas(50), Supply(2)])
 photon_cannon = GameUnit(UnitNames.photon_cannon, [forge],
         costs = [Mineral(150)])
 dark_templar = GameUnit(UnitNames.dark_templar, [dark_shrine],
-        costs = [Mineral(125), Gas(125)])
+        costs = [Mineral(125), Gas(125), Supply(2)])
 high_templar = GameUnit(UnitNames.high_templar, [templar_archives],
-        costs = [Mineral(50), Gas(150)])
+        costs = [Mineral(50), Gas(150), Supply(2)])
 archon = GameUnit(UnitNames.archon,
         consumes = [
             [high_templar, high_templar],
             [high_templar, dark_templar],
-            [dark_templar, dark_templar]])
+            [dark_templar, dark_templar]],
+        costs = [Supply(4)])
 phoenix = GameUnit(UnitNames.phoenix, [stargate],
-        costs = [Mineral(150), Gas(100)])
+        costs = [Mineral(150), Gas(100), Supply(2)])
 void_ray = GameUnit(UnitNames.void_ray, [stargate],
-        costs = [Mineral(250), Gas(150)])
+        costs = [Mineral(250), Gas(150), Supply(3)])
 carrier = GameUnit(UnitNames.carrier, [fleet_beacon],
-        costs = [Mineral(350), Gas(250)])
+        costs = [Mineral(350), Gas(250), Supply(6)])
 mothership = GameUnit(UnitNames.mothership, [fleet_beacon],
-        costs = [Mineral(400), Gas(400)])
+        costs = [Mineral(400), Gas(400), Supply(8)])
 immortal = GameUnit(UnitNames.immortal, [robotics_facility],
-        costs = [Mineral(250), Gas(100)])
+        costs = [Mineral(250), Gas(100), Supply(4)])
 colossus = GameUnit(UnitNames.colossus, [robotics_bay],
-        costs = [Mineral(300), Gas(200)])
+        costs = [Mineral(300), Gas(200), Supply(6)])
 observer = GameUnit(UnitNames.observer, [robotics_facility],
-        costs = [Mineral(25), Gas(75)])
+        costs = [Mineral(25), Gas(75), Supply(1)])
 warp_prism = GameUnit(UnitNames.warp_prism, [robotics_facility],
-        costs = [Mineral(200)])
+        costs = [Mineral(200), Supply(2)])
 
 
 """
@@ -527,32 +534,32 @@ Terran Units
 """
 
 scv = GameUnit(UnitNames.scv,
-        costs = [Mineral(50)])
+        costs = [Mineral(50), Supply(1)])
 marine = GameUnit(UnitNames.marine, [barracks],
-        costs = [Mineral(50)])
+        costs = [Mineral(50), Supply(1)])
 marauder = GameUnit(UnitNames.marauder, [tech_lab_barracks],
-        costs = [Mineral(100), Gas(25)])
+        costs = [Mineral(100), Gas(25), Supply(2)])
 reaper = GameUnit(UnitNames.reaper, [tech_lab_barracks],
-        costs = [Mineral(50), Gas(50)])
+        costs = [Mineral(50), Gas(50), Supply(1)])
 hellion = GameUnit(UnitNames.hellion, [factory],
-        costs = [Mineral(100)])
+        costs = [Mineral(100), Supply(2)])
 siege_tank = GameUnit(UnitNames.siege_tank, [tech_lab_factory],
-        costs = [Mineral(150), Gas(125)])
+        costs = [Mineral(150), Gas(125), Supply(3)])
 thor = GameUnit(UnitNames.thor, [tech_lab_factory, armory],
-        costs = [Mineral(300), Gas(200)])
+        costs = [Mineral(300), Gas(200), Supply(6)])
 ghost = GameUnit(UnitNames.ghost, [tech_lab_barracks, ghost_academy],
-        costs = [Mineral(200), Gas(100)])
+        costs = [Mineral(200), Gas(100), Supply(2)])
 viking = GameUnit(UnitNames.viking, [starport],
-        costs = [Mineral(150), Gas(75)])
+        costs = [Mineral(150), Gas(75), Supply(2)])
 medivac = GameUnit(UnitNames.medivac, [starport],
-        costs = [Mineral(100), Gas(100)])
+        costs = [Mineral(100), Gas(100), Supply(2)])
 banshee = GameUnit(UnitNames.banshee, [tech_lab_starport],
-        costs = [Mineral(150), Gas(100)])
+        costs = [Mineral(150), Gas(100), Supply(3)])
 raven = GameUnit(UnitNames.raven, [tech_lab_starport],
-        costs = [Mineral(100), Gas(200)])
+        costs = [Mineral(100), Gas(200), Supply(2)])
 battlecruiser = GameUnit(UnitNames.battlecruiser,
         [tech_lab_starport, fusion_core],
-        costs = [Mineral(300), Gas(200)])
+        costs = [Mineral(300), Gas(200), Supply(6)])
 
 
 zerg_units = [ drone, overlord, hatchery, extractor, spawning_pool,
@@ -583,3 +590,4 @@ class Races:
     ZERG = 'zerg'
     TERRAN = 'terran'
     PROTOSS = 'protoss'
+    races = [ ZERG, TERRAN, PROTOSS ]

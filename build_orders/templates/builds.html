@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block main %}
+    {% for build in builds %}
+    <div class='row'>
+        <div class='span4'>
+            <h1>
+                {{ build.race|capitalize }}
+            </h1>
+        </div>
+        <div class='span12'>
+            <p>
+            {% for unit, supply in build.distinguishing_features %}
+            {{ supply.amount }} {{ unit }}, 
+            {% endfor %}
+            </p>
+            <p>
+            {{ build.order.active_units|join(', ') }}
+            </p>
+        </div>
+    </div>
+    {% endfor %}
+{% endblock %}

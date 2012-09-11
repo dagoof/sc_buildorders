@@ -14,11 +14,17 @@
 
 {% block main %}
     <div class='row'>
-        <a href='{{ url_for('build_create', race = 'terran') }}'>create new</a>
-    </div>
+        <h1>
+            {{ build.order.supply }}
+        </h1>
+        <p>
+            {% for unit, supply in build.distinguishing_features %}
+            {{ supply.amount }} {{ unit }}, 
+            {% endfor %}
+        </p>
     </div>
     <div class='row'>
-        <div class='span-one-third'>
+        <div class='span4'>
             <ul>
                 {% for unit in build.order._unit_order %}
                 <li>
@@ -27,7 +33,7 @@
                 {% endfor %}
             </ul>
         </div>
-        <div class='span-one-third'>
+        <div class='span4'>
             <ul>
                 {% for unit in build.order.active_units %}
                 <li>
@@ -36,7 +42,7 @@
                 {% endfor %}
             </ul>
         </div>
-        <div class='span-one-third'>
+        <div class='span4'>
             {{ tech_tree(build.order.available_tech_tree) }}
         </div>
     </div>

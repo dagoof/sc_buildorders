@@ -1,10 +1,6 @@
 import functools, sc_units, operator, itertools
 import decorators, func_utils
 
-class BuildElement(object):
-    def __init__(self, unit):
-        pass
-
 class BuildOrder(object):
     def __init__(self, race_units, *units):
         self._race_units = race_units
@@ -20,6 +16,19 @@ class BuildOrder(object):
     @property
     def active_units(self):
         return self._units
+
+    @decorators.apply_f(list)
+    def get_costs(self, *resources):
+        costs = reduce(operator.add, 
+                map(operator.attrgetter('costs'), self.active_units))
+        for resource in resources or sc_units.game_resources:
+            combined = resource.combine_resources(*costs)
+            if combined.amount:
+                yield combined
+
+    @property
+    def supply(self):
+        return next(iter(self.get_costs(sc_units.Supply)), sc_units.Supply(0))
 
     @property
     @decorators.apply_f(list)

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block main %}
+    {% for race in races %}
+    <div class='row'>
+        <h3>
+            <a href='{{ url_for('build_create_race', race = race) }}'>
+                {{ race }}
+            </a>
+        </h3>
+    </div>
+    {% endfor %}
+{% endblock %}
+

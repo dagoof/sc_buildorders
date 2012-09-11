@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% macro render_field(field) %}
+    <div class='control-group{% if field.errors %} error{% endif %}'>
+        <label class='control-label'> {{ field.label }} </label>
+        <div class='controls'>
+            {{ field(**kwargs)|safe }}
+            {% if field.errors %}
+            <ul>
+                {% for error in field.errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+    </div>
+{% endmacro %}
+
+{% block main %}
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class='row'>
+        {% for message in messages %}
+        <p class='error'>{{ message }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <div class='row'>
+        <form method='post' class='form-horizontal' action='{{ request.path }}'>
+            <fieldset>
+                {% for field in form %}
+                {{ render_field(field) }}
+                {% endfor %}
+                <div class='form-actions'>
+                    <input type='submit' class='btn-large btn-primary' value='submit'/>
+                </div>
+            </fieldset>
+        </form>
+    </div>
+
+{% endblock %}
